@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.6";
+window.APP_VERSION = "1.7";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -11,7 +11,7 @@ const nz = v => CALC.num(v);
 const S = {                 // oturum durumu
   settings: null,
   filaments: [], printers: [], customers: [], groups: [], expenses: [],
-  records: [], spools: [],
+  records: [], spools: [], products: [], sales: [],
   screen: "calc"
 };
 
@@ -75,15 +75,97 @@ const nameOf = (list, id, fallback) => (byId(list, id) || {}).name || fallback |
 
 async function reload() {
   S.settings = await DB.getSettings();
-  const [f, p, c, g, e, r, s] = await Promise.all([
+  const [f, p, c, g, e, r, s, pr, sl] = await Promise.all([
     DB.all("filaments"), DB.all("printers"), DB.all("customers"), DB.all("groups"),
-    DB.all("expenses"), DB.all("records"), DB.all("spools")
+    DB.all("expenses"), DB.all("records"), DB.all("spools"),
+    DB.all("products"), DB.all("sales")
   ]);
   S.filaments = f.sort(byName); S.printers = p.sort(byName); S.customers = c.sort(byName);
   S.groups = g.sort(byName); S.expenses = e.sort(byName); S.spools = s;
   S.records = r.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  S.products = pr.sort(byName);
+  S.sales = sl;
 }
 const byName = (a, b) => String(a.name || "").localeCompare(String(b.name || ""), I18N[LANG]._locale);
+
+
+/* ---------------- renk adları ----------------
+   Filament rengi hex olarak tutulur; adı buradan türetilir, kullanıcı
+   isterse kendi adını yazar. Eşleme HSL üzerinden en yakın aileye bakar. */
+const COLOR_NAMES = [
+  { key: "kirmizi",   h: 0,   tr: "Kırmızı",     en: "Red",        ar: "أحمر" },
+  { key: "turuncu",   h: 25,  tr: "Turuncu",     en: "Orange",     ar: "برتقالي" },
+  { key: "sari",      h: 52,  tr: "Sarı",        en: "Yellow",     ar: "أصفر" },
+  { key: "fistik",    h: 80,  tr: "Fıstık yeşili", en: "Lime",     ar: "أخضر فاتح" },
+  { key: "yesil",     h: 125, tr: "Yeşil",       en: "Green",      ar: "أخضر" },
+  { key: "turkuaz",   h: 172, tr: "Turkuaz",     en: "Turquoise",  ar: "فيروزي" },
+  { key: "acikmavi",  h: 196, tr: "Açık mavi",   en: "Light blue", ar: "أزرق فاتح" },
+  { key: "mavi",      h: 222, tr: "Mavi",        en: "Blue",       ar: "أزرق" },
+  { key: "lacivert",  h: 245, tr: "Lacivert",    en: "Navy",       ar: "كحلي" },
+  { key: "mor",       h: 275, tr: "Mor",         en: "Purple",     ar: "بنفسجي" },
+  { key: "pembe",     h: 325, tr: "Pembe",       en: "Pink",       ar: "وردي" }
+];
+const GREY_NAMES = [
+  { key: "siyah",    tr: "Siyah",     en: "Black",      ar: "أسود" },
+  { key: "koyugri",  tr: "Koyu gri",  en: "Dark grey",  ar: "رمادي غامق" },
+  { key: "gri",      tr: "Gri",       en: "Grey",       ar: "رمادي" },
+  { key: "acikgri",  tr: "Açık gri",  en: "Light grey", ar: "رمادي فاتح" },
+  { key: "beyaz",    tr: "Beyaz",     en: "White",      ar: "أبيض" }
+];
+const BROWN = { tr: "Kahverengi", en: "Brown", ar: "بني" };
+const BEIGE = { tr: "Bej",        en: "Beige", ar: "بيج" };
+
+function hexToHsl(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  const l = (mx + mn) / 2;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  return { h, s, l };
+}
+
+function colorName(hex) {
+  const c = hexToHsl(hex);
+  if (!c) return "";
+  const lang = I18N[LANG] ? LANG : "tr";
+
+  if (c.s < 0.12 || c.l < 0.07 || c.l > 0.95) {
+    const i = Math.min(GREY_NAMES.length - 1, Math.max(0, Math.round(c.l * 4)));
+    return GREY_NAMES[i][lang];
+  }
+  /* turuncu-sarı bandında koyu ton kahverengi, çok açık ton bej */
+  if (c.h >= 10 && c.h <= 48) {
+    if (c.l < 0.35) return BROWN[lang];
+    if (c.l > 0.80 && c.s < 0.45) return BEIGE[lang];
+  }
+  let best = COLOR_NAMES[0], bestD = 999;
+  for (const n of COLOR_NAMES) {
+    let d = Math.abs(n.h - c.h);
+    if (d > 180) d = 360 - d;
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  let ad = best[lang];
+  if (c.l < 0.28) ad = (lang === "tr" ? "Koyu " : lang === "en" ? "Dark " : "داكن ") + ad.toLocaleLowerCase(I18N[lang]._locale);
+  else if (c.l > 0.78) ad = (lang === "tr" ? "Açık " : lang === "en" ? "Light " : "فاتح ") + ad.toLocaleLowerCase(I18N[lang]._locale);
+  return ad;
+}
+
+/* Renge göre sıralama: renkliler ton sırasına, griler en sona açıklık sırasına. */
+function colorSortKey(hex) {
+  const c = hexToHsl(hex);
+  if (!c) return [2, 0, 0];
+  if (c.s < 0.12) return [1, c.l, 0];
+  return [0, c.h, c.l];
+}
 
 /* ======================================================================
    HESAPLA
@@ -525,6 +607,14 @@ function openRecordForm(rec, fromCalc) {
     <div class="field"><label data-i18n="note"></label>
       <div class="inp"><textarea id="mNote">${esc(r.note || "")}</textarea></div></div>
 
+    ${rec ? "" : `<label class="chk head" style="--acc:var(--filament)">
+      <input type="checkbox" id="mToProd" checked> <span data-i18n="add_to_products"></span></label>
+    <div class="group" id="gToProd">
+      <p class="note" style="margin-top:4px" data-i18n="add_to_products_hint"></p>
+      <div class="field"><label data-i18n="location"></label>
+        <div class="inp"><input id="mLocation" data-i18n-ph="location_hint"></div></div>
+    </div>`}
+
     <div class="pair" style="margin-top:11px">
       <div class="field"><label data-i18n="photo"></label>
         <div class="inp"><input id="mPhoto" type="file" accept="image/*"></div>
@@ -602,6 +692,13 @@ async function saveRecord(r, c, computed) {
   const isNew = !doc.id;
   await DB.put("records", doc);
   if (isNew && !doc.failed) await deductStock(doc);
+
+  /* Başarılı baskı ürün stoğuna eklenir */
+  const toProd = $("#mToProd");
+  if (isNew && !doc.failed && toProd && toProd.checked && computed) {
+    await addToProducts(doc.partName, computed.qty, computed.cost,
+                        ($("#mLocation") || {}).value, doc.photoId, c && c.margin);
+  }
 
   closeModal();
   if (c) S._calcPhoto = null;
@@ -727,24 +824,50 @@ function bindPrinters() {
    KATEGORİLER
    ====================================================================== */
 const CAT_DEFS = {
-  filaments: { title: "cat_filaments", fields: ["name", "price", "color", "note"] },
+  filaments: { title: "cat_filaments", fields: ["name", "brand", "model", "price", "color", "colorName", "note"] },
   printers:  { title: "cat_printers",  fields: ["name", "watt", "price", "life", "note"] },
   customers: { title: "cat_customers", fields: ["name", "phone", "note"] },
   groups:    { title: "cat_groups",    fields: ["name", "note"] },
   expenses:  { title: "cat_expenses",  fields: ["name", "price", "note"] }
 };
 
+function catFiltered(kind) {
+  const q = (S._catSearch || "").toLocaleLowerCase(I18N[LANG]._locale).trim();
+  let list = S[kind];
+  if (q) {
+    list = list.filter(x => [x.name, x.brand, x.model, filColorName(x), x.note, x.phone]
+      .filter(Boolean).join(" ").toLocaleLowerCase(I18N[LANG]._locale).includes(q));
+  }
+  if (kind === "filaments" && S._catSort === "color") {
+    list = list.slice().sort((a, b) => {
+      const ka = colorSortKey(a.color), kb = colorSortKey(b.color);
+      return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2] || byName(a, b);
+    });
+  }
+  return list;
+}
+
 function screenCats() {
   return `
   <h1 data-i18n="cats_title"></h1>
   <p class="lead" data-i18n="cats_sub"></p>
+
+  <div class="toolbar">
+    <div class="inp"><input id="catSearch" type="search" data-i18n-ph="search" value="${esc(S._catSearch || "")}"></div>
+    <div class="inp narrow"><select id="catSort">
+      <option value="name"${S._catSort !== "color" ? " selected" : ""}>${esc(t("sort_name"))}</option>
+      <option value="color"${S._catSort === "color" ? " selected" : ""}>${esc(t("sort_color"))}</option>
+    </select></div>
+  </div>
+
   <div class="grid2">${Object.keys(CAT_DEFS).map(k => {
-    const list = S[k];
+    const list = catFiltered(k);
     return `<section class="panel">
       <h2 data-i18n="${CAT_DEFS[k].title}"></h2>
       <div class="rows">${list.length ? list.map(x => `
         <div class="row">
-          ${k === "filaments" ? `<i class="swatch" style="background:${esc(x.color || "#45C8BE")}"></i>` : ""}
+          ${k === "filaments" ? `<i class="swatch" style="background:${esc(x.color || "#45C8BE")}"
+               title="${esc(filColorName(x))}"></i>` : ""}
           <span class="rname">${esc(x.name)}</span>
           <span class="rmeta">${esc(catMeta(k, x))}</span>
           <button class="icon-btn" data-cedit="${k}:${esc(x.id)}" title="${esc(t("edit"))}">✎</button>
@@ -755,8 +878,16 @@ function screenCats() {
   }).join("")}</div>`;
 }
 
+const filColorName = x => x.colorName || colorName(x.color || "") || "";
+
 function catMeta(kind, x) {
-  if (kind === "filaments") return nz(x.price) ? CALC.fmt(nz(x.price), "USD") + " / kg" : "";
+  if (kind === "filaments") {
+    return [
+      [x.brand, x.model].filter(Boolean).join(" "),
+      filColorName(x),
+      nz(x.price) ? CALC.fmt(nz(x.price), "USD") + " / kg" : ""
+    ].filter(Boolean).join(" · ");
+  }
   if (kind === "printers") return [nz(x.watt) ? nz(x.watt) + " W" : "", nz(x.life) ? nz(x.life) + " " + t("hours") : ""].filter(Boolean).join(" · ");
   if (kind === "customers") return x.phone || "";
   if (kind === "expenses") return nz(x.price) ? CALC.fmt(nz(x.price), "USD") : "";
@@ -767,10 +898,14 @@ function catForm(kind, item) {
   const def = CAT_DEFS[kind];
   const x = item || {};
   const labels = { name: "name", price: "price", color: "color", note: "note_field",
-                   phone: "phone", watt: "printer_power", life: "machine_life" };
+                   phone: "phone", watt: "printer_power", life: "machine_life",
+                   brand: "brand", model: "model", colorName: "color_name" };
   const body = def.fields.map(f => {
     if (f === "color") return `<div class="field"><label data-i18n="color"></label>
       <div class="inp"><input id="f_color" type="color" value="${esc(x.color || "#45C8BE")}" style="padding:6px 0"></div></div>`;
+    if (f === "colorName") return `<div class="field"><label data-i18n="color_name"></label>
+      <div class="inp"><input id="f_colorName" value="${esc(x.colorName || "")}"
+        placeholder="${esc(colorName(x.color || "#45C8BE"))}"></div></div>`;
     if (f === "note") return `<div class="field"><label data-i18n="note_field"></label>
       <div class="inp"><input id="f_note" value="${esc(x.note || "")}"></div></div>`;
     const num = ["price", "watt", "life"].includes(f);
@@ -788,6 +923,7 @@ function catForm(kind, item) {
           if (!el) return;
           doc[f] = ["price", "watt", "life"].includes(f) ? nz(el.value) : el.value.trim();
         });
+        if (kind === "filaments" && !doc.colorName) delete doc.colorName;   // boşsa otomatik ad kullanılır
         if (!doc.name) { toast(t("required"), "bad"); return; }
         await DB.put(kind, doc);
         closeModal(); await reload(); render(); toast(t("saved"), "good");
@@ -796,6 +932,17 @@ function catForm(kind, item) {
 }
 
 function bindCats() {
+  const sr = $("#catSearch");
+  if (sr) sr.oninput = e => {
+    S._catSearch = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const el = $("#catSearch");
+    if (el) { el.focus(); el.setSelectionRange(pos, pos); }
+  };
+  const so = $("#catSort");
+  if (so) so.onchange = e => { S._catSort = e.target.value; render(); };
+
   $$("[data-cadd]").forEach(b => b.onclick = () => catForm(b.dataset.cadd, null));
   $$("[data-cedit]").forEach(b => b.onclick = () => {
     const [k, id] = b.dataset.cedit.split(":");
@@ -1332,6 +1479,301 @@ async function doSync(loud) {
   }
 }
 
+
+/* ======================================================================
+   ÜRÜNLER — basılan parçaların stoğu
+   Bir baskı kaydedildiğinde adedi buraya eklenir; satış yapıldığında düşer.
+   Birim maliyet ağırlıklı ortalamayla tutulur, böylece kâr doğru çıkar.
+   ====================================================================== */
+function productStats() {
+  const list = S.products;
+  return {
+    kinds: list.length,
+    pieces: list.reduce((a, p) => a + Math.max(0, nz(p.qty)), 0),
+    value: list.reduce((a, p) => a + Math.max(0, nz(p.qty)) * nz(p.unitCost), 0)
+  };
+}
+
+/* Önerilen fiyat: ürün üretilirken kullanılan kâr oranı varsa onunla,
+   yoksa ayarlardaki öntanımlı oranla. */
+function suggestedPrice(p) {
+  const m = (p && p.margin != null && nz(p.margin) > 0) ? nz(p.margin) : nz(S.settings.defMargin);
+  return nz(p.unitCost) * (1 + m / 100);
+}
+
+function screenProducts() {
+  const q = (S._prodSearch || "").toLowerCase().trim();
+  const list = S.products.filter(p => !q ||
+    [p.name, p.location, p.note].join(" ").toLowerCase().includes(q));
+  const st = productStats();
+
+  return `
+  <h1 data-i18n="products_title"></h1>
+  <p class="lead" data-i18n="products_sub"></p>
+
+  <div class="statrow">
+    <div class="stat"><em data-i18n="nav_products"></em><b>${st.kinds}</b></div>
+    <div class="stat"><em data-i18n="in_stock"></em><b>${st.pieces} ${esc(t("pieces"))}</b></div>
+    <div class="stat"><em data-i18n="total_cost"></em><b>${esc(money(st.value))}</b></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="inp"><input id="prodSearch" type="search" data-i18n-ph="search" value="${esc(S._prodSearch || "")}"></div>
+    <button class="btn pri" id="bAddProduct" data-i18n="add_product"></button>
+  </div>
+
+  ${list.length ? `<div class="cards">${list.map(p => {
+    const qty = Math.max(0, nz(p.qty));
+    const bos = qty <= 0;
+    return `<div class="card">
+      <div class="prodhead">
+        ${p.photoId ? `<img class="prodimg" data-thumb="${esc(p.photoId)}" alt="">`
+                    : `<div class="prodimg ph"></div>`}
+        <div class="prodttl">
+          <h3>${esc(p.name)}</h3>
+          <p class="cardsub">${esc(p.location || t("no_location"))}</p>
+        </div>
+      </div>
+      <div class="kv"><span data-i18n="in_stock"></span>
+        <b>${bos ? `<span class="pill cancelled">${esc(t("out_of_stock"))}</span>`
+                 : qty + " " + esc(t("pieces"))}</b></div>
+      <div class="kv"><span data-i18n="unit_cost_one"></span><b>${esc(money(nz(p.unitCost)))}</b></div>
+      <div class="kv"><span data-i18n="suggested_price"></span><b>${esc(money(suggestedPrice(p)))}</b></div>
+      <div class="btnrow">
+        <button class="btn pri" data-sell="${esc(p.id)}" ${bos ? "disabled" : ""} data-i18n="sell"></button>
+        <button class="btn" data-uedit="${esc(p.id)}" data-i18n="edit"></button>
+        <button class="btn danger" data-udel="${esc(p.id)}" data-i18n="remove"></button>
+      </div>
+    </div>`;
+  }).join("")}</div>` : `<div class="empty" data-i18n="no_products"></div>`}`;
+}
+
+function bindProducts() {
+  const sr = $("#prodSearch");
+  sr.oninput = e => { S._prodSearch = e.target.value; const pos = e.target.selectionStart;
+    render(); const el = $("#prodSearch"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } };
+  $("#bAddProduct").onclick = () => productForm(null);
+  $$("[data-uedit]").forEach(b => b.onclick = () => productForm(byId(S.products, b.dataset.uedit)));
+  $$("[data-sell]").forEach(b => b.onclick = () => sellForm(byId(S.products, b.dataset.sell)));
+  $$("[data-udel]").forEach(b => b.onclick = () => confirmBox(t("delete_confirm"), async () => {
+    await DB.del("products", b.dataset.udel); await reload(); render(); toast(t("deleted"));
+  }));
+  $$("img[data-thumb]").forEach(img => loadThumb(img));
+}
+
+function productForm(item) {
+  const x = item || {};
+  modal(item ? t("edit_product") : t("add_product"), `
+    <div class="field"><label data-i18n="product_name"></label>
+      <div class="inp"><input id="u_name" value="${esc(x.name || "")}"></div></div>
+    <div class="pair" style="margin-top:11px">
+      <div class="field"><label data-i18n="in_stock"></label>
+        <div class="inp"><input id="u_qty" type="number" min="0" step="1" value="${esc(x.qty ?? 0)}"><span data-i18n="pieces"></span></div></div>
+      <div class="field"><label data-i18n="unit_cost_one"></label>
+        <div class="inp"><span>$</span><input id="u_cost" type="number" min="0" step="0.01" value="${esc(x.unitCost ?? 0)}"></div></div>
+    </div>
+    <div class="pair" style="margin-top:11px">
+      <div class="field"><label data-i18n="profit_rate"></label>
+        <div class="inp"><input id="u_margin" type="number" min="0" step="1" value="${esc(x.margin ?? S.settings.defMargin)}"><span>%</span></div></div>
+      <div class="field"><label data-i18n="location"></label>
+        <div class="inp"><input id="u_loc" value="${esc(x.location || "")}" data-i18n-ph="location_hint"></div></div>
+    </div>
+    <div class="field"><label data-i18n="note_field"></label>
+      <div class="inp"><input id="u_note" value="${esc(x.note || "")}"></div></div>
+    <div class="field"><label data-i18n="photo"></label>
+      <div class="inp"><input id="u_photo" type="file" accept="image/*"></div></div>
+  `, [
+    { label: t("cancel"), onClick: closeModal },
+    { label: t("save"), kind: "pri", onClick: async () => {
+        const doc = Object.assign({}, x, {
+          name: $("#u_name").value.trim(),
+          qty: Math.max(0, Math.round(nz($("#u_qty").value))),
+          unitCost: nz($("#u_cost").value),
+          margin: nz($("#u_margin").value),
+          location: $("#u_loc").value.trim(),
+          note: $("#u_note").value.trim()
+        });
+        if (!doc.name) { toast(t("required"), "bad"); return; }
+        const f = $("#u_photo").files[0];
+        if (f) doc.photoId = await DB.putFile(await shrinkImage(f), { name: f.name, kind: "photo" });
+        await DB.put("products", doc);
+        closeModal(); await reload(); render(); toast(t("saved"), "good");
+      } }
+  ]);
+}
+
+/* Baskı kaydı ürün stoğuna eklenir; birim maliyet ağırlıklı ortalama olur. */
+async function addToProducts(name, qty, unitCost, location, photoId, margin) {
+  name = String(name || "").trim();
+  qty = Math.max(0, Math.round(nz(qty)));
+  if (!name || qty <= 0) return null;
+
+  const key = name.toLocaleLowerCase(I18N[LANG]._locale);
+  let p = S.products.find(x => String(x.name || "").toLocaleLowerCase(I18N[LANG]._locale) === key);
+  if (!p) p = { id: DB.uid(), name, qty: 0, unitCost: 0 };
+
+  const oldQty = Math.max(0, nz(p.qty));
+  const total = oldQty + qty;
+  p.unitCost = total > 0 ? (oldQty * nz(p.unitCost) + qty * nz(unitCost)) / total : nz(unitCost);
+  p.qty = total;
+  if (location) p.location = location;
+  if (photoId && !p.photoId) p.photoId = photoId;
+  if (nz(margin) > 0) p.margin = nz(margin);
+
+  await DB.put("products", p);
+  return p.id;
+}
+
+/* ======================================================================
+   SATIŞLAR
+   ====================================================================== */
+function sellForm(p) {
+  if (!p) return;
+  const stok = Math.max(0, nz(p.qty));
+  modal(t("sell_title", { ad: p.name }), `
+    <div class="trow"><span data-i18n="in_stock"></span><b>${stok} ${esc(t("pieces"))}</b></div>
+    <div class="trow"><span data-i18n="unit_cost_one"></span><b>${esc(money(nz(p.unitCost)))}</b></div>
+    <div class="pair" style="margin-top:14px">
+      <div class="field"><label data-i18n="sale_qty"></label>
+        <div class="inp"><input id="v_qty" type="number" min="1" max="${stok}" step="1" value="1"><span data-i18n="pieces"></span></div></div>
+      <div class="field"><label data-i18n="sale_unit_price"></label>
+        <div class="inp"><span>$</span><input id="v_price" type="number" min="0" step="0.01" value="${suggestedPrice(p).toFixed(2)}"></div></div>
+    </div>
+    <div class="pair" style="margin-top:11px">
+      <div class="field"><label data-i18n="sale_date"></label>
+        <div class="inp"><input id="v_date" type="date" value="${today()}"></div></div>
+      <div class="field"><label data-i18n="customer"></label>
+        <div class="inp"><select id="v_cust">${opts(S.customers, null, t("none"))}</select></div></div>
+    </div>
+    <div class="field"><label data-i18n="payment"></label>
+      <div class="inp"><select id="v_pay">${PAY_KINDS.map(k =>
+        `<option value="${k}"${k === "paid" ? " selected" : ""}>${esc(t("pay_" + k))}</option>`).join("")}</select></div></div>
+    <div class="field"><label data-i18n="note_field"></label>
+      <div class="inp"><input id="v_note"></div></div>
+    <div class="totals" style="margin-top:14px">
+      <div class="trow"><span data-i18n="sale_total"></span><b id="v_tot">—</b></div>
+      <div class="trow strong"><span data-i18n="sale_profit"></span><b id="v_pro">—</b></div>
+    </div>
+  `, [
+    { label: t("cancel"), onClick: closeModal },
+    { label: t("sell"), kind: "pri", onClick: () => saveSale(p) }
+  ]);
+
+  const hesapla = () => {
+    const q = Math.max(0, Math.round(nz($("#v_qty").value)));
+    const pr = nz($("#v_price").value);
+    $("#v_tot").textContent = money(q * pr);
+    $("#v_pro").textContent = money(q * (pr - nz(p.unitCost)));
+  };
+  ["v_qty", "v_price"].forEach(id => $("#" + id).addEventListener("input", hesapla));
+  hesapla();
+}
+
+async function saveSale(p) {
+  const qty = Math.max(0, Math.round(nz($("#v_qty").value)));
+  const price = nz($("#v_price").value);
+  const stok = Math.max(0, nz(p.qty));
+  if (qty <= 0) { toast(t("required"), "bad"); return; }
+  if (qty > stok) { toast(t("not_enough_stock", { n: stok }), "bad"); return; }
+
+  const custId = $("#v_cust").value || null;
+  const sale = {
+    id: DB.uid(),
+    productId: p.id, productName: p.name,
+    qty, unitPrice: price, unitCost: nz(p.unitCost),
+    total: qty * price,
+    cost: qty * nz(p.unitCost),
+    profit: qty * (price - nz(p.unitCost)),
+    date: $("#v_date").value || today(),
+    customerId: custId, customerName: nameOf(S.customers, custId),
+    payment: $("#v_pay").value || "paid",
+    note: $("#v_note").value.trim(),
+    location: p.location || ""
+  };
+  await DB.put("sales", sale);
+
+  p.qty = stok - qty;                       // stoktan düş
+  await DB.put("products", p);
+
+  closeModal();
+  await reload();
+  S.screen = "sales";
+  render();
+  toast(t("sale_done"), "good");
+}
+
+function saleTotals(list) {
+  return list.reduce((a, s) => {
+    if (s.payment === "cancelled") return a;
+    a.n += nz(s.qty); a.rev += nz(s.total); a.cost += nz(s.cost); a.profit += nz(s.profit);
+    return a;
+  }, { n: 0, rev: 0, cost: 0, profit: 0 });
+}
+
+function screenSales() {
+  const q = (S._saleSearch || "").toLowerCase().trim();
+  const list = S.sales
+    .filter(s => !q || [s.productName, s.customerName, s.note].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const tot = saleTotals(list);
+
+  return `
+  <h1 data-i18n="sales_title"></h1>
+  <p class="lead" data-i18n="sales_sub"></p>
+
+  <div class="statrow">
+    <div class="stat"><em data-i18n="sold_qty"></em><b>${tot.n} ${esc(t("pieces"))}</b></div>
+    <div class="stat"><em data-i18n="revenue"></em><b>${esc(money(tot.rev))}</b></div>
+    <div class="stat"><em data-i18n="total_cost"></em><b>${esc(money(tot.cost))}</b></div>
+    <div class="stat"><em data-i18n="total_profit"></em><b>${esc(money(tot.profit))}</b></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="inp"><input id="saleSearch" type="search" data-i18n-ph="search" value="${esc(S._saleSearch || "")}"></div>
+    <div class="inp narrow"><select id="saleCur">${["USD", "TRY", "SYP"].map(c =>
+      `<option value="${c}"${(S._recCur || S.settings.primaryCurrency) === c ? " selected" : ""}>${c}</option>`).join("")}</select></div>
+  </div>
+
+  ${list.length ? `<div class="tablewrap"><table>
+    <thead><tr>
+      <th data-i18n="date"></th><th data-i18n="product"></th><th data-i18n="customer"></th>
+      <th class="num" data-i18n="sold_qty"></th>
+      <th class="num" data-i18n="sale_unit_price"></th>
+      <th class="num" data-i18n="sale_total"></th>
+      <th class="num" data-i18n="sale_profit"></th>
+      <th data-i18n="payment"></th><th></th>
+    </tr></thead>
+    <tbody>${list.map(s => `<tr>
+      <td>${esc(dateStr(s.date))}</td>
+      <td>${esc(s.productName || "—")}</td>
+      <td>${esc(s.customerName || "—")}</td>
+      <td class="num">${nz(s.qty)}</td>
+      <td class="num">${esc(money(nz(s.unitPrice)))}</td>
+      <td class="num">${esc(money(nz(s.total)))}</td>
+      <td class="num">${esc(money(nz(s.profit)))}</td>
+      <td><span class="pill ${s.payment || "paid"}">${esc(t("pay_" + (s.payment || "paid")))}</span></td>
+      <td class="act"><button class="icon-btn" data-sdelete="${esc(s.id)}" title="${esc(t("remove"))}">🗑</button></td>
+    </tr>`).join("")}</tbody>
+  </table></div>` : `<div class="empty" data-i18n="no_sales"></div>`}`;
+}
+
+function bindSales() {
+  const sr = $("#saleSearch");
+  sr.oninput = e => { S._saleSearch = e.target.value; const pos = e.target.selectionStart;
+    render(); const el = $("#saleSearch"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } };
+  $("#saleCur").onchange = e => { S._recCur = e.target.value; render(); };
+  $$("[data-sdelete]").forEach(b => b.onclick = () => {
+    const sale = byId(S.sales, b.dataset.sdelete);
+    if (!sale) return;
+    confirmBox(t("sale_delete_confirm"), async () => {
+      const p = byId(S.products, sale.productId);
+      if (p) { p.qty = Math.max(0, nz(p.qty)) + nz(sale.qty); await DB.put("products", p); }
+      await DB.del("sales", sale.id);
+      await reload(); render(); toast(t("stock_returned", { n: nz(sale.qty) }));
+    });
+  });
+}
+
 /* ======================================================================
    GÜNCELLEME BİLDİRİMİ
    Her program açılışında denetler; yeni sürüm varsa üstte bir şerit çıkar
@@ -1462,6 +1904,8 @@ function paintUpdateStatusLine() {
 const SCREENS = {
   calc:     { html: screenCalc,     bind: bindCalc },
   records:  { html: screenRecords,  bind: bindRecords },
+  products: { html: screenProducts, bind: bindProducts },
+  sales:    { html: screenSales,    bind: bindSales },
   printers: { html: screenPrinters, bind: bindPrinters },
   cats:     { html: screenCats,     bind: bindCats },
   stock:    { html: screenStock,    bind: bindStock },

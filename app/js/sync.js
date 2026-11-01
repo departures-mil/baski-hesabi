@@ -7,7 +7,8 @@ const ID_HOST = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_HOST = "https://securetoken.googleapis.com/v1";
 
 /* Firestore'a gönderilecek koleksiyonlar. files boyut sınırına takılmasın diye ayrı ele alınır. */
-const SYNC_STORES = ["filaments", "printers", "customers", "groups", "expenses", "records", "spools"];
+const SYNC_STORES = ["filaments", "printers", "customers", "groups", "expenses", "records",
+                     "spools", "products", "sales"];
 const MAX_FILE_SYNC = 700 * 1024;   // Firestore belge sınırı 1 MiB
 
 let _tok = null;        // {idToken, refreshToken, expiresAt, uid}

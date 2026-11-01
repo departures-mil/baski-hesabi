@@ -213,7 +213,8 @@ td.act{text-align:end;white-space:nowrap;width:1%}
 .rows{display:flex;flex-direction:column;gap:7px}
 .row{display:flex;align-items:center;gap:11px;background:var(--panel2);
   border:1px solid var(--line);border-radius:var(--r-s);padding:9px 12px}
-.row .swatch{width:12px;height:12px;border-radius:3px;flex:none}
+.row .swatch{width:15px;height:15px;border-radius:50%;flex:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14), inset 0 1px 2px rgba(0,0,0,.35)}
 .row .rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .rmeta{color:var(--muted);font-size:13px;white-space:nowrap}
 
@@ -346,3 +347,14 @@ body.has-upbar .tabs{top:105px}
 }
 .modal .photoprev img{width:74px;height:74px;object-fit:cover;border-radius:6px;display:block}
 .modal .photoprev span{color:var(--muted);font-size:13px}
+
+/* ---------- ürün kartı ---------- */
+.prodhead{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.prodimg{width:56px;height:56px;flex:none;border-radius:8px;object-fit:cover;
+  border:1px solid var(--line);background:var(--panel2);display:block}
+.prodimg.ph{position:relative}
+.prodimg.ph::after{content:"";position:absolute;inset:14px 12px;border-radius:3px;
+  background:linear-gradient(90deg,var(--filament),var(--power));opacity:.3}
+.prodttl{min-width:0;flex:1}
+.prodttl h3{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prodttl .cardsub{margin:2px 0 0}
