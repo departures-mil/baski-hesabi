@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -24,7 +25,7 @@ import (
 )
 
 const appName = "Baski Hesabi"
-const appVersion = "1.4"
+const appVersion = "1.5"
 
 //go:embed all:app
 var bundled embed.FS
@@ -202,6 +203,29 @@ func shellAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Fprint(w, "ok")
+
+	case "getir":
+		/* Sayfa tarayıcı içinde olduğu için başka sitelere doğrudan erişemez
+		   (CORS). Kabuk onun adına okur. Yalnız https, 10 sn, 1 MB sınırı. */
+		raw := r.URL.Query().Get("url")
+		u, err := url.Parse(raw)
+		if err != nil || u.Scheme != "https" || u.Host == "" {
+			http.Error(w, "gecersiz adres", http.StatusBadRequest)
+			return
+		}
+		cli := &http.Client{Timeout: 10 * time.Second}
+		req, _ := http.NewRequest("GET", u.String(), nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 BaskiHesabi/"+appVersion)
+		req.Header.Set("Accept-Language", "tr,en;q=0.8,ar;q=0.6")
+		resp, err := cli.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Kaynak-Durum", fmt.Sprint(resp.StatusCode))
+		_, _ = io.Copy(w, io.LimitReader(resp.Body, 1<<20))
 
 	case "restart":
 		fmt.Fprint(w, "ok") // sayfa kendini yeniler, sunucu yeni paketi verir

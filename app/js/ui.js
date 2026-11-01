@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.4";
+window.APP_VERSION = "1.5";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -173,6 +173,13 @@ function screenCalc() {
           <div class="inp"><input id="cFailRate" type="number" min="0" step="1" value="${st.defFailRate}"><span>%</span></div></div>
       </div>
 
+      <div class="photobox${S._calcPhoto ? " has" : ""}" id="photoBox">
+        ${S._calcPhoto
+          ? `<img src="${S._calcPhoto}" alt=""><button type="button" class="rm" id="photoRm" data-i18n="photo_remove"></button>`
+          : `<div class="ph"><i></i><span data-i18n="photo_hint"></span></div>`}
+        <input type="file" id="photoInp" accept="image/*" hidden>
+      </div>
+
       ${S.expenses.length ? `<p class="sec" data-i18n="extra_cost"></p><div id="cExtras">${
         S.expenses.map(x => `
         <label class="chk" style="margin-top:9px"><input type="checkbox" class="exOn" data-id="${esc(x.id)}">
@@ -240,7 +247,8 @@ function readCalcForm() {
     laborOn: $("#cLaborOn").checked, laborRate: nz($("#cLaborRate").value), laborMin: nz($("#cLaborMin").value),
     wearOn: $("#cWearOn").checked, machinePrice: nz($("#cMachine").value), machineLife: nz($("#cLife").value),
     failOn: $("#cFailOn").checked, failRate: nz($("#cFailRate").value),
-    extras: ex
+    extras: ex,
+    photo: S._calcPhoto || null
   };
 }
 
@@ -298,6 +306,33 @@ function drawStack(host, slices, total) {
   });
 }
 
+/* Hesap ekranındaki parça fotoğrafı: tıkla ya da sürükle. Küçültülüp
+   saklanır, "Kayda geç" ile kayda da geçer. */
+function bindPhotoBox() {
+  const box = $("#photoBox");
+  if (!box) return;
+  const inp = $("#photoInp");
+
+  const al = async file => {
+    if (!file || !file.type.startsWith("image/")) return;
+    S._calcPhoto = await shrinkImage(file);
+    render();
+  };
+
+  box.onclick = e => { if (e.target.id !== "photoRm" && !S._calcPhoto) inp.click(); };
+  inp.onchange = e => al(e.target.files[0]);
+
+  const rm = $("#photoRm");
+  if (rm) rm.onclick = e => { e.stopPropagation(); S._calcPhoto = null; render(); };
+
+  box.addEventListener("dragover", e => { e.preventDefault(); box.classList.add("over"); });
+  box.addEventListener("dragleave", () => box.classList.remove("over"));
+  box.addEventListener("drop", e => {
+    e.preventDefault(); box.classList.remove("over");
+    al(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+}
+
 function bindCalc() {
   const repaint = () => paintCalc();
   $$("#main input, #main select").forEach(el => {
@@ -320,7 +355,9 @@ function bindCalc() {
     repaint();
   });
 
-  $("#bReset").onclick = () => render();
+  bindPhotoBox();
+
+  $("#bReset").onclick = () => { S._calcPhoto = null; render(); };
   $("#bSave").onclick = () => openRecordForm(null, readCalcForm());
   paintCalc();
 }
@@ -490,7 +527,9 @@ function openRecordForm(rec, fromCalc) {
 
     <div class="pair" style="margin-top:11px">
       <div class="field"><label data-i18n="photo"></label>
-        <div class="inp"><input id="mPhoto" type="file" accept="image/*"></div></div>
+        <div class="inp"><input id="mPhoto" type="file" accept="image/*"></div>
+        ${(c && c.photo) ? `<div class="photoprev"><img src="${c.photo}" alt="">
+          <span data-i18n="photo_hint"></span></div>` : ""}</div>
       <div class="field"><label data-i18n="attachment"></label>
         <div class="inp"><input id="mFile" type="file"></div></div>
     </div>
@@ -547,7 +586,12 @@ async function saveRecord(r, c, computed) {
   }
 
   const photo = $("#mPhoto").files[0];
-  if (photo) doc.photoId = await DB.putFile(await shrinkImage(photo), { name: photo.name, kind: "photo" });
+  if (photo) {
+    doc.photoId = await DB.putFile(await shrinkImage(photo), { name: photo.name, kind: "photo" });
+  } else if (c && c.photo && !doc.photoId) {
+    /* hesap ekranında seçilen fotoğraf kayda geçer */
+    doc.photoId = await DB.putFile(c.photo, { name: "parca.jpg", kind: "photo" });
+  }
   const file = $("#mFile").files[0];
   if (file) {
     if (file.size > 4 * 1024 * 1024) toast(t("fb_missing"), "bad");
@@ -560,6 +604,7 @@ async function saveRecord(r, c, computed) {
   if (isNew && !doc.failed) await deductStock(doc);
 
   closeModal();
+  if (c) S._calcPhoto = null;
   await reload();
   S.screen = "records";
   render();
@@ -1028,7 +1073,8 @@ function screenSettings() {
       <label class="chk" style="margin-top:11px"><input type="checkbox" id="setAutoRates"${st.autoRates ? " checked" : ""}>
         <span data-i18n="auto_rates"></span></label>
       <p class="status" id="rateStatus">${st.ratesUpdatedAt
-        ? esc(t("rates_ok", { time: dateStr(st.ratesUpdatedAt), src: st.ratesSrc || "" }))
+        ? esc(t("rates_ok", { time: dateStr(st.ratesUpdatedAt), src: st.ratesSrc || "" })
+            + " — " + t(st.ratesMarket ? "rate_market" : "rate_official"))
         : esc(t("rates_manual"))}</p>
       <p class="note" data-i18n="syp_note"></p>
     </section>
@@ -1229,13 +1275,18 @@ async function doFetchRates(loud) {
   if (st) { st.className = "status"; st.textContent = t("rates_fetching"); }
   try {
     const r = await CALC.fetchRates();
-    const patch = { rateTry: r.rateTry, ratesUpdatedAt: DB.now(), ratesSrc: r.src };
+    const patch = { ratesUpdatedAt: DB.now(), ratesSrc: r.src, ratesMarket: !!r.market };
+    if (r.rateTry) patch.rateTry = r.rateTry;
     if (r.rateSyp) patch.rateSyp = r.rateSyp;
     await DB.saveSettings(patch);
     S.settings = await DB.getSettings();
     if ($("#setTry")) $("#setTry").value = S.settings.rateTry;
     if ($("#setSyp")) $("#setSyp").value = S.settings.rateSyp;
-    if (st) { st.className = "status ok"; st.textContent = t("rates_ok", { time: new Date().toLocaleString(I18N[LANG]._locale), src: r.src }); }
+    if (st) {
+      st.className = "status ok";
+      st.textContent = t("rates_ok", { time: new Date().toLocaleString(I18N[LANG]._locale), src: r.src })
+        + " — " + t(r.market ? "rate_market" : "rate_official");
+    }
     if (loud) toast(t("saved"), "good");
     if (S.screen === "calc") paintCalc();
   } catch (e) {
