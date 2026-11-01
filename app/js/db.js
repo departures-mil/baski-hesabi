@@ -2,9 +2,9 @@
    silinenler iz bırakır ki eşitleme diğer cihazda da silebilsin. */
 
 const DB_NAME = "baski-hesabi";
-const DB_VER = 1;
+const DB_VER = 2;
 const STORES = ["meta", "filaments", "printers", "customers", "groups", "expenses",
-                "records", "spools", "files"];
+                "records", "spools", "files", "products", "sales"];
 
 let _db = null;
 
