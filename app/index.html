@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Baskı Hesabı</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-txt"><b data-i18n="app">Baskı Hesabı</b><em id="verTag"></em></span>
+    </div>
+    <div class="topright">
+      <span id="syncDot" class="dot-off" title=""></span>
+      <select id="langSel" aria-label="Dil">
+        <option value="tr">Türkçe</option>
+        <option value="en">English</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+  </header>
+
+  <div id="upBar" class="upbar" hidden>
+    <span class="upbar-dot" aria-hidden="true"></span>
+    <span class="upbar-txt" id="upBarTxt"></span>
+    <span class="upbar-notes" id="upBarNotes"></span>
+    <button class="btn pri" id="upBarGo"></button>
+    <button class="btn" id="upBarLater"></button>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-screen="calc"     class="on"><span data-i18n="nav_calc">Hesapla</span></button>
+    <button data-screen="records"><span data-i18n="nav_records">Kayıtlar</span></button>
+    <button data-screen="printers"><span data-i18n="nav_printers">Yazıcılar</span></button>
+    <button data-screen="cats"><span data-i18n="nav_cats">Kategoriler</span></button>
+    <button data-screen="stock"><span data-i18n="nav_stock">Stok</span></button>
+    <button data-screen="reports"><span data-i18n="nav_reports">Raporlar</span></button>
+    <button data-screen="settings"><span data-i18n="nav_settings">Ayarlar</span></button>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<div id="modalWrap" class="modal-wrap" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3 id="modalTitle"></h3>
+      <button id="modalX" class="icon-btn" aria-label="×">&times;</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/i18n.js"></script>
+<script src="js/db.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

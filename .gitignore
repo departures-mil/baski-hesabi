@@ -1,0 +1,5 @@
+shell-exe/app/
+shell-exe/*.exe
+shell-exe/test-linux
+dist/
+node_modules/
