@@ -101,6 +101,7 @@ const FACTORY = {
   rateSyp: 122,
   autoRates: true,
   ratesUpdatedAt: null,
+  ratesMarket: false,
   primaryCurrency: "USD",
   /* varsayılan hesap değerleri */
   defFilamentId: null,

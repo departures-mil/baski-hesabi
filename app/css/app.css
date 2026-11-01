@@ -312,3 +312,37 @@ body.has-upbar .tabs{top:105px}
   body.has-upbar .tabs{top:auto;position:static}
 }
 @media (prefers-reduced-motion:reduce){ .upbar-dot{animation:none} }
+
+
+/* ---------- hesap ekranındaki parça fotoğrafı ---------- */
+.photobox{
+  margin-top:20px;border:1px dashed var(--line2);border-radius:var(--r);
+  background:var(--panel2);min-height:190px;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  cursor:pointer;transition:border-color .12s,background-color .12s;
+}
+.photobox:hover,.photobox.over{border-color:var(--filament);background:#223240}
+.photobox .ph{color:var(--muted);font-size:13.5px;padding:22px 16px;line-height:1.6}
+.photobox .ph i{
+  display:block;width:34px;height:26px;margin:0 auto 10px;border-radius:4px;
+  border:2px solid var(--line2);position:relative;
+}
+.photobox .ph i::after{
+  content:"";position:absolute;inset:auto 4px 4px 4px;height:9px;border-radius:2px;
+  background:linear-gradient(90deg,var(--filament),var(--power));opacity:.5;
+}
+.photobox img{width:100%;height:100%;max-height:360px;object-fit:contain;display:block}
+.photobox .rm{
+  position:absolute;top:8px;inset-inline-end:8px;background:rgba(10,16,20,.82);
+  border:1px solid var(--line2);color:var(--ink);border-radius:6px;
+  padding:3px 9px;font-size:13px;cursor:pointer;
+}
+.photobox .rm:hover{background:#2A1E24;color:#FFD4DE}
+.photobox.has{cursor:default;border-style:solid}
+
+.modal .photoprev{
+  margin-top:6px;border:1px solid var(--line);border-radius:var(--r-s);
+  background:var(--panel2);padding:7px;display:flex;gap:11px;align-items:center;
+}
+.modal .photoprev img{width:74px;height:74px;object-fit:cover;border-radius:6px;display:block}
+.modal .photoprev span{color:var(--muted);font-size:13px}
