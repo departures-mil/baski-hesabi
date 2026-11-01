@@ -24,7 +24,7 @@ import (
 )
 
 const appName = "Baski Hesabi"
-const appVersion = "1.3"
+const appVersion = "1.4"
 
 //go:embed all:app
 var bundled embed.FS
@@ -34,6 +34,7 @@ var (
 	liveDir  string // indirilen güncelleme
 	outDir   string // dışa aktarmalar
 	lastPing = time.Now()
+	pingSeen bool // sayfa en az bir kez haber verdi mi
 	pingMu   sync.Mutex
 )
 
@@ -64,32 +65,38 @@ func main() {
 	mux.HandleFunc("/", serveApp)
 	go http.Serve(ln, mux)
 
-	cmd := openWindow(addr)
-	done := make(chan struct{})
-	if cmd != nil {
-		go func() { _ = cmd.Wait(); close(done) }()
-	} else {
-		close(done) // pencere bizim sürecimiz değil; yaşam işaretine bakarız
-	}
+	openWindow(addr)
 
-	ticker := time.NewTicker(5 * time.Second)
+	/* Ömrü sayfanın yaşam işareti belirler, tarayıcıyı başlatan süreç değil.
+	   msedge.exe pencereyi açıp kendisi hemen kapanır; ona bakıp çıkarsak
+	   sunucu ölür ve pencerede "bağlanılamadı" görünür. */
+	waitForPage()
+}
+
+func waitForPage() {
+	const (
+		tick     = 3 * time.Second
+		idleStop = 30 * time.Second // sayfa bu kadar susarsa kapandı say
+		firstMax = 3 * time.Minute  // sayfa hiç açılmadıysa boşuna bekleme
+	)
+	started := time.Now()
+	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
-	grace := time.Now().Add(40 * time.Second) // açılışa süre tanı
 
-	for {
-		select {
-		case <-done:
-			if cmd != nil {
-				return // pencere kapandı
+	for range ticker.C {
+		pingMu.Lock()
+		seen := pingSeen
+		last := lastPing
+		pingMu.Unlock()
+
+		if seen {
+			if time.Since(last) > idleStop {
+				return // pencere kapatıldı
 			}
-			done = nil
-		case <-ticker.C:
-			pingMu.Lock()
-			last := lastPing
-			pingMu.Unlock()
-			if time.Now().After(grace) && time.Since(last) > 25*time.Second {
-				return // sayfa kapanmış
-			}
+			continue
+		}
+		if time.Since(started) > firstMax {
+			return // sayfa hiç yüklenmedi
 		}
 	}
 }
@@ -163,6 +170,7 @@ func shellAPI(w http.ResponseWriter, r *http.Request) {
 	case "ping":
 		pingMu.Lock()
 		lastPing = time.Now()
+		pingSeen = true
 		pingMu.Unlock()
 		fmt.Fprint(w, "ok")
 

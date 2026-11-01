@@ -20,6 +20,9 @@ func openWindow(addr string) *exec.Cmd {
 		"--start-maximized",
 		"--no-first-run",
 		"--no-default-browser-check",
+		"--disable-session-crashed-bubble", // onceki cokmeden kalan "geri yukle" balonu
+		"--hide-crash-restore-bubble",
+		"--disable-backgrounding-occluded-windows",
 		"--disable-features=Translate,msEdgeAutofill,TabHoverCards",
 	}
 
