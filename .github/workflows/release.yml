@@ -1,0 +1,58 @@
+name: Surum yayinla
+
+# v ile baslayan bir etiket gonderilince calisir: tasinabilir exe uretir,
+# arsivler ve GitHub surumu olarak yayinlar.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  yayinla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Surum adini al
+        id: s
+        run: echo "ver=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Web paketini kabuga koy
+        run: cp -r app shell-exe/app
+
+      - name: Tasinabilir exe derle
+        working-directory: shell-exe
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          go build -trimpath -ldflags "-s -w -H=windowsgui" \
+            -o "../BaskiHesabi-v${{ steps.s.outputs.ver }}.exe" .
+
+      - name: Arsivle
+        run: |
+          zip -9 "BaskiHesabi-v${{ steps.s.outputs.ver }}.zip" \
+            "BaskiHesabi-v${{ steps.s.outputs.ver }}.exe"
+
+      - name: Surumu yayinla
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notlar="release-notlari.md"
+          if [ ! -f "$notlar" ]; then
+            printf '## %s\n\nTasinabilir exe: kurulum gerekmez.\nYuklu programda: Ayarlar -> Guncellemeyi denetle -> Guncelle.\n' \
+              "${GITHUB_REF_NAME}" > "$notlar"
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            "BaskiHesabi-v${{ steps.s.outputs.ver }}.exe" \
+            "BaskiHesabi-v${{ steps.s.outputs.ver }}.zip" \
+            --title "Baski Hesabi ${GITHUB_REF_NAME}" \
+            --notes-file "$notlar"
