@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.5";
+window.APP_VERSION = "1.6";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -692,7 +692,11 @@ function screenPrinters() {
       <div class="kv"><span data-i18n="earned"></span><b>${esc(money(s.revenue))}</b></div>
       <div class="kv"><span data-i18n="printer_profit"></span><b>${esc(money(s.profit))}</b></div>
       <div class="kv"><span data-i18n="fail_count"></span><b>${s.failed}</b></div>
-      <div class="btnrow"><button class="btn" data-prec="${esc(p.id)}" data-i18n="nav_records"></button></div>
+      <div class="btnrow">
+        <button class="btn" data-prec="${esc(p.id)}" data-i18n="nav_records"></button>
+        <button class="btn" data-pedit="${esc(p.id)}" data-i18n="edit"></button>
+        <button class="btn danger" data-pdel="${esc(p.id)}" data-i18n="remove"></button>
+      </div>
     </div>`;
   }).join("")}</div>
   <div class="btnrow"><button class="btn" id="bAddPrinter" data-i18n="add_printer"></button></div>`;
@@ -703,6 +707,19 @@ function bindPrinters() {
   if (add) add.onclick = () => catForm("printers", null);
   $$("[data-prec]").forEach(b => b.onclick = () => {
     S.screen = "records"; S._pendingPrinter = b.dataset.prec; render();
+  });
+  $$("[data-pedit]").forEach(b => b.onclick = () => catForm("printers", byId(S.printers, b.dataset.pedit)));
+  $$("[data-pdel]").forEach(b => b.onclick = () => {
+    const id = b.dataset.pdel;
+    const used = S.records.filter(r => r.printerId === id).length;
+    const msg = used ? t("in_use_warn", { n: used }) + "\n" + t("delete_confirm") : t("delete_confirm");
+    confirmBox(msg, async () => {
+      await DB.del("printers", id);
+      /* öntanımlı yazıcıysa ayarlardan da düşsün */
+      const st = await DB.getSettings();
+      if (st.defPrinterId === id) await DB.saveSettings({ defPrinterId: null });
+      await reload(); render(); toast(t("deleted"));
+    });
   });
 }
 
