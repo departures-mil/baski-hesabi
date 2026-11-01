@@ -24,7 +24,7 @@ import (
 )
 
 const appName = "Baski Hesabi"
-const appVersion = "1.2"
+const appVersion = "1.3"
 
 //go:embed all:app
 var bundled embed.FS

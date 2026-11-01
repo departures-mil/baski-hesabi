@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.2";
+window.APP_VERSION = "1.3";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -52,7 +52,8 @@ function confirmBox(text, onYes) {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
-const money = (usd, cur) => CALC.fmt(usd, cur || S.settings.primaryCurrency, S.settings);
+const money = (usd, cur) =>
+  CALC.fmt(usd, cur || S._recCur || S.settings.primaryCurrency, S.settings);
 function allThree(usd) {
   return [CALC.fmt(usd, "USD", S.settings), CALC.fmt(usd, "TRY", S.settings), CALC.fmt(usd, "SYP", S.settings)];
 }
@@ -344,6 +345,8 @@ function screenRecords() {
       PAY_KINDS.map(k => `<option value="${k}">${esc(t("pay_" + k))}</option>`).join("")}</select></div>
     <div class="inp narrow"><input id="fFrom" type="date" data-i18n-title="filter_from"></div>
     <div class="inp narrow"><input id="fTo" type="date" data-i18n-title="filter_to"></div>
+    <div class="inp narrow"><select id="fCur">${["USD", "TRY", "SYP"].map(c =>
+      `<option value="${c}"${(S._recCur || S.settings.primaryCurrency) === c ? " selected" : ""}>${c}</option>`).join("")}</select></div>
     <button class="btn pri" id="bNewRec" data-i18n="new_record"></button>
   </div>
 
@@ -1400,6 +1403,7 @@ const SCREENS = {
 
 function bindRecords() {
   $("#bNewRec").onclick = () => openRecordForm(null, null);
+  $("#fCur").onchange = e => { S._recCur = e.target.value; paintRecords(); };
   ["fSearch", "fPrinter", "fCustomer", "fPay", "fFrom", "fTo"].forEach(id => {
     const el = $("#" + id);
     el.addEventListener("input", paintRecords);
