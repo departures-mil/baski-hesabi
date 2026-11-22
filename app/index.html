@@ -61,6 +61,7 @@
 <script src="js/i18n.js"></script>
 <script src="js/db.js"></script>
 <script src="js/calc.js"></script>
+<script src="js/kullanim.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/shell.js"></script>
 <script src="js/ui.js"></script>
@@ -68,5 +69,6 @@
 <script src="js/admin-iletisim.js"></script>
 <script src="js/duyuru.js"></script>
 <script>Duyuru.baslat({uygulama:'baski-hesabi',surum:String(window.APP_VERSION||'0'),dil:function(){return typeof LANG!=='undefined'?LANG:'tr'}});</script>
+<script>Kullanim.baslat({uygulama:'baski-hesabi',bulut:true,ai:false,sinif:'panel',dil:function(){return typeof LANG!=='undefined'?LANG:'tr'}});Kullanim.yerlestir(function(){return document.getElementById('admin-iletisim')},true);</script>
 </body>
 </html>
