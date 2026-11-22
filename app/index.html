@@ -66,5 +66,7 @@
 <script src="js/ui.js"></script>
 <script>window.ADMIN_ILETISIM={app:'Baskı Hesabı',version:function(){return window.APP_VERSION},lang:function(){return typeof LANG!=='undefined'?LANG:'tr'},anchor:function(){var e=document.getElementById('setLang');return e?e.closest('.grid2'):null},cls:{card:'panel',btn:'btn pri',muted:'note'}};</script>
 <script src="js/admin-iletisim.js"></script>
+<script src="js/duyuru.js"></script>
+<script>Duyuru.baslat({uygulama:'baski-hesabi',surum:String(window.APP_VERSION||'0'),dil:function(){return typeof LANG!=='undefined'?LANG:'tr'}});</script>
 </body>
 </html>
