@@ -1,6 +1,6 @@
 /*
  * "Admin ile iletişime geç" — Ayarlar sayfasının sonuna eklenen ortak bölüm (TR / EN / AR).
- * Mesaj FormSubmit üzerinden yöneticinin e-postasına gider; adres programda açıkça görünmez.
+ * Mesaj yöneticinin mesaj kutusuna (Firestore) ve FormSubmit ile e-postasına gider; adres programda açıkça görünmez.
  * Kullanım: bu dosyadan ÖNCE
  *   window.ADMIN_ILETISIM = { app: 'Uygulama adı', version: () => '1.0.0', anchor: () => element|null,
  *                             lang: () => 'tr'|'en'|'ar', cls: { card, title, input, btn, muted } }
@@ -22,13 +22,29 @@
   function ver() { try { return String((C.version && C.version()) || ''); } catch (e) { return ''; } }
   function q() { try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch (e) { return []; } }
   function setQ(a) { try { localStorage.setItem(QKEY, JSON.stringify(a.slice(-20))); } catch (e) {} }
-  function post(m) {
+  // İki bağımsız kanal; biri kabul ederse mesaj ulaşmış sayılır:
+  //  1) yöneticinin mesaj kutusu (Firestore "mesajlar", yalnızca ekleme; etkinleştirme gerekmez)
+  //  2) e-posta kopyası (FormSubmit; etkinleştirme yanıtı ulaştı sayılmaz)
+  var INBOX = 'https://firestore.googleapis.com/v1/projects/comm-calc-103111111/databases/(default)/documents/mesajlar?key=AIzaSyB12RFS6ENPpmnnPsETfjedNH-3hmNWQvA';
+  function inbox(m) {
+    var F = function (v) { return { stringValue: String(v || '').slice(0, 4000) }; };
+    var app = C.app || 'Uygulama';
+    var fields = { mesaj: F(m.message), konu: F(app + ' · Mesaj'), dil: F(m.lang), surum: F(m.version), platform: F(app + ' · ' + (m.device || '')), zaman: { timestampValue: new Date().toISOString() } };
+    if (m.name) fields.ad = F(m.name);
+    if (m.email) fields.iletisim = F(m.email);
+    return fetch(INBOX, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: fields }) })
+      .then(function (r) { return r.ok; }, function () { return false; });
+  }
+  function mail(m) {
+    if (C.send) return Promise.resolve(C.send(m)).then(function (r) { return !!(r && r.ok); }, function () { return false; });
     var body = { _subject: (C.app || 'Uygulama') + ': yeni mesaj', _template: 'table', _captcha: 'false', Ad: m.name || '-', Mesaj: m.message, Surum: m.version || '', Cihaz: m.device || '', Dil: m.lang || '' };
     if (m.email) { body.email = m.email; body._replyto = m.email; }
     return fetch('https://formsubmit.co/ajax/' + to(), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) {
-        if ((!r.ok || String(j.success) === 'false') && !/activat/i.test(j.message || '')) throw new Error(j.message || r.status);
-      }); });
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) { return String(j.success) === 'true'; }, function () { return false; });
+  }
+  function post(m) {
+    return Promise.all([inbox(m), mail(m)]).then(function (r) { if (!r[0] && !r[1]) throw new Error('fail'); });
   }
   function flush() {
     var a = q(); if (!a.length || !navigator.onLine) return;
