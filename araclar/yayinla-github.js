@@ -47,6 +47,10 @@ const manifest = { version, notes, publishedAt: new Date().toISOString(), files 
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify(manifest));
 
-const kb = (fs.statSync(out).size / 1024).toFixed(0);
+/* küçük özet: uygulama önce bunu okur, büyük paketi yalnız "Güncelle"de ilerlemeli indirir */
+const size = fs.statSync(out).size;
+fs.writeFileSync(path.join(path.dirname(out), "surum-ozet.json"),
+  JSON.stringify({ version, notes, publishedAt: manifest.publishedAt, size }));
+const kb = (size / 1024).toFixed(0);
 console.log(`surum.json yazildi: v${version}, ${Object.keys(files).length} dosya, ${kb} KB`);
-console.log(`Simdi depoya isle:  git add surum.json && git commit -m "v${version}" && git push`);
+console.log(`Simdi depoya isle:  git add surum.json surum-ozet.json && git commit -m "v${version}" && git push`);

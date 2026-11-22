@@ -360,3 +360,9 @@ body.has-upbar .tabs{top:105px}
 .prodttl .cardsub{margin:2px 0 0}
 
 #admin-iletisim input,#admin-iletisim textarea{background:var(--bg,transparent);color:inherit;border:1px solid var(--line);border-radius:8px}
+
+/* sağ üst: güncelle / eşitle */
+.top-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0}
+.top-btn.busy svg{animation:topspin 1s linear infinite}
+.top-badge{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#e5484d}
+@keyframes topspin{to{transform:rotate(360deg)}}

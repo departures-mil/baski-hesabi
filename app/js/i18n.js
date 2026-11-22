@@ -2,6 +2,7 @@
 const I18N = {
 
 tr: {
+  top_update: "Güncelle", top_sync: "Eşitle",
   _name: "Türkçe", _dir: "ltr", _locale: "tr-TR",
 
   app: "Baskı Hesabı",
@@ -180,6 +181,7 @@ tr: {
 },
 
 en: {
+  top_update: "Update", top_sync: "Sync",
   _name: "English", _dir: "ltr", _locale: "en-US",
 
   app: "Print Cost",
@@ -350,6 +352,7 @@ en: {
 },
 
 ar: {
+  top_update: "تحديث", top_sync: "مزامنة",
   _name: "العربية", _dir: "rtl", _locale: "ar",
 
   app: "حاسبة الطباعة",

@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.10";
+window.APP_VERSION = "1.12";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -1796,6 +1796,7 @@ function showUpBar(u) {
   e.go.textContent = t("update_now");
   e.later.textContent = t("update_later");
   e.bar.hidden = false;
+  const bd = document.querySelector("#topUpd .top-badge"); if (bd) bd.hidden = false;
   document.body.classList.add("has-upbar");
   markTabDot(true);
 }
@@ -1876,6 +1877,15 @@ async function applyFoundUpdate() {
   if (e.go) { e.go.disabled = true; e.go.textContent = t("update_applying"); }
   if (status) { status.className = "status"; status.textContent = t("update_applying"); }
   try {
+    if (!u.release) {
+      const goster = p => {
+        const yz = IndirmeIlerleme.yazi(p, LANG);
+        if (status) status.textContent = yz;
+        if (e.txt) e.txt.textContent = t("update_banner", { v: u.version }) + " — " + yz;
+      };
+      u.release = await SYNC.downloadRelease(u.size, goster);
+      if (status) status.textContent = t("update_applying");
+    }
     await DB.saveSettings({ justUpdatedTo: u.version, skipVersion: null });
     const done = await SYNC.applyUpdate(u.release);
     if (status) status.textContent = t("update_done");
@@ -1975,6 +1985,25 @@ async function boot() {
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
   render();
+
+  /* sağ üst düğmeler */
+  const upBtn = $("#topUpd"), syBtn = $("#topSync");
+  const topTitles = () => { upBtn.title = t("top_update"); syBtn.title = t("top_sync");
+    upBtn.setAttribute("aria-label", upBtn.title); syBtn.setAttribute("aria-label", syBtn.title); };
+  topTitles();
+  $("#langSel").addEventListener("change", topTitles);
+  upBtn.onclick = async () => {
+    upBtn.classList.add("busy");
+    try {
+      const u = UP.found || await checkUpdates(true);
+      if (u && u.available) await applyFoundUpdate();
+      else if (u) toast(t("up_to_date"), "good");
+    } finally { upBtn.classList.remove("busy"); }
+  };
+  syBtn.onclick = async () => {
+    syBtn.classList.add("busy");
+    try { await doSync(true); } finally { syBtn.classList.remove("busy"); }
+  };
 
   /* bildirim şeridinin düğmeleri */
   $("#upBarGo").onclick = () => applyFoundUpdate();

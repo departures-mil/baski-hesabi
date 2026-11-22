@@ -225,6 +225,18 @@ async function checkUpdate() {
   const base = ghRawUrl(st, "surum.json");
   if (!base) throw new Error(t("up_no_channel"));
 
+  /* önce küçük özet (yeni yayınlar); yoksa eski usul tam paket */
+  try {
+    const oz = await fetch(ghRawUrl(st, "surum-ozet.json") + "?t=" + Date.now(), { cache: "no-store" });
+    if (oz.ok) {
+      const o = await oz.json();
+      if (o && o.version) return {
+        available: cmpVer(o.version, window.APP_VERSION) > 0,
+        version: o.version, notes: o.notes || "", size: o.size || 0, release: null
+      };
+    }
+  } catch (e) { /* özet okunamadı: tam pakete düş */ }
+
   /* ?t= ile CDN önbelleği atlanır, yeni sürüm hemen görünür */
   const res = await fetch(base + "?t=" + Date.now(), { cache: "no-store" });
   if (res.status === 404) return { available: false };          // kanal henüz boş
@@ -252,6 +264,14 @@ function cmpVer(a, b) {
   return 0;
 }
 
+/* Paketi yüzde / MB / hız göstererek indirir. */
+async function downloadRelease(size, onProgress) {
+  const st = await DB.getSettings();
+  const buf = await IndirmeIlerleme.indir(ghRawUrl(st, "surum.json") + "?t=" + Date.now(),
+    { toplam: size || 0, ilerleme: onProgress });
+  return IndirmeIlerleme.json(buf);
+}
+
 async function applyUpdate(release) {
   if (!release || !release.files) throw new Error("paket boş");
   if (window.shell && window.shell.applyUpdate) {
@@ -263,5 +283,5 @@ async function applyUpdate(release) {
   return false;
 }
 
-window.SYNC = { syncAll, checkUpdate, applyUpdate, signIn, signInAnon, ensureAuth,
+window.SYNC = { syncAll, checkUpdate, applyUpdate, downloadRelease, signIn, signInAnon, ensureAuth,
                 fsGet, fsPut, fsList, cmpVer, ghRawUrl };
