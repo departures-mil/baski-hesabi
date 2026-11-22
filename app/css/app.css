@@ -358,3 +358,5 @@ body.has-upbar .tabs{top:105px}
 .prodttl{min-width:0;flex:1}
 .prodttl h3{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prodttl .cardsub{margin:2px 0 0}
+
+#admin-iletisim input,#admin-iletisim textarea{background:var(--bg,transparent);color:inherit;border:1px solid var(--line);border-radius:8px}
