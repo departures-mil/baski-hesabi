@@ -152,7 +152,7 @@ async function oldSession(profile, port, records) {
         tx.objectStore('filaments').put({ id: 'h' + sfx, name: 'ABS', price: 22, color: '#F0876A', updatedAt: now });
         tx.objectStore('printers').put({ id: 'p' + sfx, name: 'Ender 3', watt: 150, price: 400, life: 5000, updatedAt: now });
         recs.forEach((x) => tx.objectStore('records').put(Object.assign({ filamentId: 'f' + sfx, updatedAt: now }, x)));
-        tx.objectStore('meta').put({ id: 'settings', lang: 'tr', rateTry: 51.5, updatedAt: now });
+        tx.objectStore('meta').put({ id: 'settings', lang: 'tr', rateTry: 51.5, autoRates: false, updatedAt: now });
         tx.oncomplete = () => { db.close(); res(); };
         tx.onerror = () => rej(tx.error);
       };
