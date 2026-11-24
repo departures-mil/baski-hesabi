@@ -1,58 +1,107 @@
-name: Surum yayinla
-
-# v ile baslayan bir etiket gonderilince calisir: tasinabilir exe uretir,
-# arsivler ve GitHub surumu olarak yayinlar.
+# Baskı Hesabı — test (Node + Go + Chromium) → Windows derlemesi (Go kabuk exe + NSIS kurulum + arayüz paketi app.zip)
+# → GitHub Release (ortak çekirdek reusable-release: latest.json, son 5 sürümden FCD1 yamaları).
+# Yayın: package.json sürümünü değiştirin (node araclar/surum.js X.Y.Z), main'e birleştirin, sonra
+#   Actions → release → "Run workflow" (main)   ya da   git tag vX.Y.Z && git push --tags
+# Entegrasyon dallarında (ortak-cekirdek-*) yalnız test + derleme çalışır (release yok).
+name: release
 on:
   push:
     tags: ['v*']
+    branches: ['ortak-cekirdek-*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  yayinla:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+        with: { fetch-depth: 0 }   # eski kanal köprüsü testi v1.13 kabuğunu git geçmişinden derler
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
       - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
+        with: { go-version: '1.22', cache: false }
+      - name: Playwright (Chromium) — arayüz, kurtarma ve taşıma testleri için
+        run: |
+          npm install --no-save --no-package-lock playwright-core@1.63.0
+          npx playwright-core install --with-deps chromium-headless-shell chromium
+      - name: npm test (Node duman testi + go vet/test + gerçek kabuk + Chromium)
+        run: npm test
+      - name: Etiket = package.json sürümü
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "::error::etiket ${GITHUB_REF_NAME} ≠ package.json v$v"; exit 1; }
 
-      - name: Surum adini al
-        id: s
-        run: echo "ver=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Web paketini kabuga koy
-        run: cp -r app shell-exe/app
-
-      - name: Tasinabilir exe derle
+  build:
+    needs: test
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.22', cache: false }
+      - id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Arayüz paketi (app.zip — exe'ye gömülür ve win-app asset'i olur)
+        shell: bash
+        run: node araclar/paket.js dist/app.zip
+      - name: Exe simgesi (rsrc)
+        shell: bash
+        run: go run github.com/akavel/rsrc@v0.10.2 -ico ../kurulum/icon.ico -o rsrc_windows_amd64.syso
         working-directory: shell-exe
-        env:
-          GOOS: windows
-          GOARCH: amd64
-          CGO_ENABLED: '0'
+      - name: Kabuk exe
+        shell: bash
+        working-directory: shell-exe
+        env: { GOOS: windows, GOARCH: amd64, CGO_ENABLED: '0' }
+        run: go build -trimpath -ldflags "-s -w -H=windowsgui -X main.appVersion=${{ steps.ver.outputs.version }}" -o ../dist/BaskiHesabi.exe .
+      - name: NSIS kurulum (kullanıcı başına, tr/en/ar)
+        shell: pwsh
         run: |
-          go build -trimpath -ldflags "-s -w -H=windowsgui" \
-            -o "../BaskiHesabi-v${{ steps.s.outputs.ver }}.exe" .
+          $mk = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (-not $mk) { $mk = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          if (-not (Test-Path $mk)) { choco install nsis -y --no-progress | Out-Null; $mk = "${env:ProgramFiles(x86)}\NSIS\makensis.exe" }
+          $v = "${{ steps.ver.outputs.version }}"
+          & $mk /V2 "/DVERSION=$v" "/DEXE=..\dist\BaskiHesabi.exe" "/DOUTFILE=..\dist\BaskiHesabi-Setup-$v.exe" kurulum\BaskiHesabi.nsi
+          if ($LASTEXITCODE -ne 0) { throw "makensis $LASTEXITCODE" }
+      - name: Windows duman testi (gerçek Edge penceresi, pencere düğmeleri)
+        continue-on-error: true
+        shell: pwsh
+        run: ./kurulum/duman-windows.ps1 -Exe dist/BaskiHesabi.exe
+      - name: Yayınlanacak dosyaları topla
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          cp dist/app.zip release/app.zip
+          cp dist/BaskiHesabi-Setup-*.exe release/
+          ls -la release
+          sha256sum release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-win
+          path: release/
+          retention-days: 5
 
-      - name: Arsivle
-        run: |
-          zip -9 "BaskiHesabi-v${{ steps.s.outputs.ver }}.zip" \
-            "BaskiHesabi-v${{ steps.s.outputs.ver }}.exe"
-
-      - name: Surumu yayinla
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          notlar="release-notlari.md"
-          if [ ! -f "$notlar" ]; then
-            printf '## %s\n\nTasinabilir exe: kurulum gerekmez.\nYuklu programda: Ayarlar -> Guncellemeyi denetle -> Guncelle.\n' \
-              "${GITHUB_REF_NAME}" > "$notlar"
-          fi
-          gh release create "${GITHUB_REF_NAME}" \
-            "BaskiHesabi-v${{ steps.s.outputs.ver }}.exe" \
-            "BaskiHesabi-v${{ steps.s.outputs.ver }}.zip" \
-            --title "Baski Hesabi ${GITHUB_REF_NAME}" \
-            --notes-file "$notlar"
+  release:
+    needs: [test, build]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    permissions:
+      contents: write
+    uses: departures-mil/ortak-cekirdek/.github/workflows/reusable-release.yml@main
+    with:
+      app_id: baski-hesabi
+      version: ${{ needs.build.outputs.version }}
+      file_prefix: BaskiHesabi
+      release_title: Baskı Hesabı v${{ needs.build.outputs.version }}
+      files: |
+        win-app=app.zip
+        win-setup=BaskiHesabi-Setup-*.exe
+      notes_json: release-notes.json
+      core_ref: main

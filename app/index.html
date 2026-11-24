@@ -4,35 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Baskı Hesabı</title>
+<link rel="stylesheet" href="cekirdek/css/tokens.css">
+<link rel="stylesheet" href="cekirdek/css/core.css">
 <link rel="stylesheet" href="css/app.css">
+<!-- Kabuk 2 (Go) window.fcHost'u kurar; eski kabukta ve tarayıcıda 404 → çekirdek tarayıcı kipi -->
+<script src="/__shell/host.js"></script>
 </head>
 <body>
 
 <div id="app">
   <header class="topbar">
-    <div class="brand">
+    <div class="bh-brand">
       <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       <span class="brand-txt"><b data-i18n="app">Baskı Hesabı</b><em id="verTag"></em></span>
     </div>
-    <div class="topright">
-      <button id="topUpd" class="icon-btn top-btn" type="button" aria-label="Güncelle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><i class="top-badge" hidden></i></button>
-      <button id="topSync" class="icon-btn top-btn" type="button" aria-label="Eşitle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/></svg></button>
-      <span id="syncDot" class="dot-off" title=""></span>
-      <select id="langSel" aria-label="Dil">
-        <option value="tr">Türkçe</option>
-        <option value="en">English</option>
-        <option value="ar">العربية</option>
-      </select>
-    </div>
+    <div class="topright" id="topRight"></div>
   </header>
-
-  <div id="upBar" class="upbar" hidden>
-    <span class="upbar-dot" aria-hidden="true"></span>
-    <span class="upbar-txt" id="upBarTxt"></span>
-    <span class="upbar-notes" id="upBarNotes"></span>
-    <button class="btn pri" id="upBarGo"></button>
-    <button class="btn" id="upBarLater"></button>
-  </div>
 
   <nav class="tabs" id="tabs">
     <button data-screen="calc"     class="on"><span data-i18n="nav_calc">Hesapla</span></button>
@@ -50,30 +37,23 @@
 </div>
 
 <div id="modalWrap" class="modal-wrap" hidden>
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="bh-modal" role="dialog" aria-modal="true">
     <div class="modal-head"><h3 id="modalTitle"></h3>
       <button id="modalX" class="icon-btn" aria-label="×">&times;</button></div>
-    <div class="modal-body" id="modalBody"></div>
+    <div class="bh-modal-body" id="modalBody"></div>
     <div class="modal-foot" id="modalFoot"></div>
   </div>
 </div>
 
-<div id="toast" class="toast" hidden></div>
 
+<script src="cekirdek/fc-core.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/db.js"></script>
 <script src="js/calc.js"></script>
-<script src="js/kullanim.js"></script>
-<script src="js/indirme-ilerleme.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/shell.js"></script>
+<script src="js/kurtarma.js"></script>
+<script src="js/kabuk.js"></script>
 <script src="js/ui.js"></script>
-<script>window.ADMIN_ILETISIM={app:'Baskı Hesabı',version:function(){return window.APP_VERSION},lang:function(){return typeof LANG!=='undefined'?LANG:'tr'},anchor:function(){var e=document.getElementById('setLang');return e?e.closest('.grid2'):null},cls:{card:'panel',btn:'btn pri',muted:'note'}};</script>
-<script src="js/admin-iletisim.js"></script>
-<script src="js/duyuru.js"></script>
-<script>Duyuru.baslat({uygulama:'baski-hesabi',surum:String(window.APP_VERSION||'0'),dil:function(){return typeof LANG!=='undefined'?LANG:'tr'}});</script>
-<script>Kullanim.baslat({uygulama:'baski-hesabi',bulut:true,ai:false,sinif:'panel',dil:function(){return typeof LANG!=='undefined'?LANG:'tr'}});Kullanim.yerlestir(function(){return document.getElementById('admin-iletisim')},true);</script>
-  <script src="js/fc-agent.js"></script>
-  <script src="js/agent-baslat.js"></script>
 </body>
 </html>

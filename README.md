@@ -1,7 +1,7 @@
 # Baskı Hesabı
 
 3B yazıcıdan çıkan parçaların maliyetini ve kârını hesaplar, baskı ve satış
-kayıtlarını tutar. Kurulum gerektirmeyen tek dosyalık Windows uygulaması.
+kayıtlarını tutar. Windows uygulaması (kullanıcı başına kurulum, yönetici izni gerekmez).
 
 - Filament, elektrik (watt × kWh), işçilik, makine aşınması, başarısız baskı payı
   ve kendi tanımladığın gider kalemleriyle maliyet; üzerine yüzde kâr
@@ -13,11 +13,12 @@ kayıtlarını tutar. Kurulum gerektirmeyen tek dosyalık Windows uygulaması.
   müşteri, parça grubu, gider kalemi
 - Filament stok takibi, raporlar ve grafikler, teklif/fiş çıktısı, yedekleme
 - Türkçe, İngilizce, Arapça (sağdan sola düzen dahil)
-- Uygulama içinden tek tıkla güncelleme
+- Uygulama içinden tek tıkla güncelleme (yalnızca değişen kısımlar iner)
+- Renk şemaları, açık/koyu tema, yazı boyutu; Admin ile iletişim
 
 **İndir:** [Sürümler](https://github.com/departures-mil/baski-hesabi/releases/latest)
-→ `BaskiHesabi-vX.Y.exe`
+→ `BaskiHesabi-X.Y.Z-win-setup.exe`
 
-Kayıtlar exe'nin yanındaki `BaskiHesabi-veri` klasöründe tutulur; dışa
-aktarmalar `BaskiHesabi-ciktilar` klasörüne iner. Taşınabilir: exe'yi
-kopyaladığında verilerin de gelir.
+Kayıtlar kurulum klasöründeki (`%LOCALAPPDATA%\Programs\BaskiHesabi`) `BaskiHesabi-veri` klasöründe tutulur;
+kaldırma onlara dokunmaz. Dışa aktarmalar `BaskiHesabi-ciktilar` klasörüne iner. Eski taşınabilir sürümü
+kullandıysanız yeni kurulum ilk açılışta eski kayıtları kendiliğinden taşır (eski klasör silinmez).
