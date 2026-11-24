@@ -1,0 +1,50 @@
+# surum.json değişince (yeni sürüm) Windows kurulum dosyasını (setup) üretip GitHub sürümüne koyar.
+# İndirme linkleri sayfası (departures-mil/duyurular) bu dosyayı kendiliğinden listeler.
+name: Kurulum dosyasi
+
+on:
+  push:
+    branches: [main]
+    paths: ['surum.json', 'shell-exe/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kurulum
+  cancel-in-progress: false
+
+jobs:
+  kurulum:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Surum
+        id: s
+        run: |
+          V=$(python3 -c "import json;print(json.load(open('surum.json'))['version'])")
+          V3=$(python3 -c "import sys;p=(sys.argv[1].split('.')+['0','0'])[:3];print('.'.join(p))" "$V")
+          echo "ver=$V" >> "$GITHUB_OUTPUT"; echo "ver3=$V3" >> "$GITHUB_OUTPUT"
+      - name: Exe derle
+        working-directory: shell-exe
+        env: { GOOS: windows, GOARCH: amd64, CGO_ENABLED: '0' }
+        run: |
+          cp -r ../app app
+          go build -trimpath -ldflags "-s -w -H=windowsgui" -o ../BaskiHesabi.exe .
+      - name: Kurulum dosyasi
+        run: |
+          sudo apt-get install -y -q nsis >/dev/null
+          LC_ALL=C.UTF-8 makensis -V2 -DNAME="Baskı Hesabı" -DEXE="BaskiHesabi.exe" -DSRC="$PWD/BaskiHesabi.exe" \
+            -DVERSION="${{ steps.s.outputs.ver3 }}" -DREGKEY=BaskiHesabi \
+            -DOUT="$PWD/BaskiHesabi-Setup-${{ steps.s.outputs.ver }}.exe" kurulum/kurulum.nsi
+      - name: Surume koy
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          T="v${{ steps.s.outputs.ver }}"
+          gh release view "$T" >/dev/null 2>&1 || gh release create "$T" --target "$GITHUB_SHA" \
+            --title "Baskı Hesabı $T" --notes "Windows kurulum dosyası. Kurulu programda güncellemeler program içinden gelir."
+          gh release upload "$T" "BaskiHesabi-Setup-${{ steps.s.outputs.ver }}.exe" --clobber
