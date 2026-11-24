@@ -86,6 +86,9 @@ Section "install"
   SetOverwrite on
   File "icon.ico"
   WriteUninstaller "$INSTDIR\${UNINST}"
+  ; v1.13 kurulumunun (kurulum/kurulum.nsi) kalıntıları: eski kaldırıcı ve Başlat klasörü
+  Delete "$INSTDIR\Uninstall.exe"
+  RMDir /r "$SMPROGRAMS\${APPNAME}"
 
   CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}" "" "$INSTDIR\icon.ico" 0
   CreateShortcut "$SMPROGRAMS\${APPNAME}.lnk" "$INSTDIR\${EXENAME}" "" "$INSTDIR\icon.ico" 0

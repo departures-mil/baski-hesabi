@@ -314,7 +314,7 @@ test('eski kanal köprüsü: eski kabuk 1.x (git f1c59bc) yeni arayüzü surum.j
       assert.strictEqual(o.v, require('../package.json').version);
       assert.strictEqual(o.host, 'browser');
       assert.strictEqual(o.legacy, true);
-      assert.match(o.setup, /\/releases\/download\/v\d+\.\d+\.\d+\/BaskiHesabi-\d+\.\d+\.\d+-win-setup\.exe$/);
+      assert.match(o.setup, /\/releases\/download\/v\d+\.\d+\.\d+\/BaskiHesabi-Setup-\d+\.\d+\.\d+\.exe$/);
       assert.match(o.text, /BaskiHesabi-veri/);
       assert.deepStrictEqual(errors, []);
     } finally { await ctx.close(); }

@@ -102,6 +102,6 @@ jobs:
       release_title: Baskı Hesabı v${{ needs.build.outputs.version }}
       files: |
         win-app=app.zip
-        win-setup=BaskiHesabi-Setup-*.exe
+        win-setup=BaskiHesabi-Setup-*.exe=BaskiHesabi-Setup-{version}.exe
       notes_json: release-notes.json
       core_ref: main

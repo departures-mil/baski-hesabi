@@ -17,7 +17,7 @@ kayıtlarını tutar. Windows uygulaması (kullanıcı başına kurulum, yöneti
 - Renk şemaları, açık/koyu tema, yazı boyutu; Admin ile iletişim
 
 **İndir:** [Sürümler](https://github.com/departures-mil/baski-hesabi/releases/latest)
-→ `BaskiHesabi-X.Y.Z-win-setup.exe`
+→ `BaskiHesabi-Setup-X.Y.Z.exe`
 
 Kayıtlar kurulum klasöründeki (`%LOCALAPPDATA%\Programs\BaskiHesabi`) `BaskiHesabi-veri` klasöründe tutulur;
 kaldırma onlara dokunmaz. Dışa aktarmalar `BaskiHesabi-ciktilar` klasörüne iner. Eski taşınabilir sürümü
