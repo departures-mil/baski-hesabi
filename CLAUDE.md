@@ -34,7 +34,7 @@ her açılışta tam ekran açar. Ortak çekirdek (departures-mil/ortak-cekirdek
 ## Güncelleme ve yayın
 - Yalnız GitHub Releases + `latest.json` (çekirdek `FC.updater`, açılışta + 6 saatte bir; Ayarlar → "Her açılışta denetle").
   Kanallar: `win-app` = arayüz paketi `BaskiHesabi-X.Y.Z-win-app.zip` (FCD1 yama ya da tam dosya; kabuk SHA-256 doğrular,
-  `BaskiHesabi-veri/paket/app.zip`'e atomik yazar, sayfa yenilenir), `win-setup` = NSIS kurulum `BaskiHesabi-X.Y.Z-win-setup.exe`
+  `BaskiHesabi-veri/paket/app.zip`'e atomik yazar, sayfa yenilenir), `win-setup` = NSIS kurulum `BaskiHesabi-Setup-X.Y.Z.exe` (duyurular indirme sayfası bu adı listeler)
   (kabuk değiştiğinde: `minVersion` yükseltin → istemci kurulumu indirir, doğrular, çalıştırır).
   Kabuk (Go) değişikliği eski kurulumlara yalnız win-setup ile gider; arayüz yeni kabuk ucu kullanıyorsa `min_version` verin.
 - CI `.github/workflows/release.yml`: test (ubuntu: Node + Go + Chromium) → build (windows-latest: app.zip, exe [rsrc simgesi],
@@ -42,6 +42,8 @@ her açılışta tam ekran açar. Ortak çekirdek (departures-mil/ortak-cekirdek
   Entegrasyon dalları (`ortak-cekirdek-*`) yalnız test + derleme. Yayın main'de:
   `gh api -X POST repos/departures-mil/baski-hesabi/actions/workflows/release.yml/dispatches -f ref=main`
   (ya da `git tag vX.Y.Z && git push --tags`).
+- `kurulum.yml` (başka oturumun eklediği, surum.json'a bağlı eski kurulum üretimi; v1.13 sürümünü o yaptı) v1.14.0'da
+  kaldırıldı: kurulum artık release.yml'in win-setup kanalı. `kurulum/kurulum.nsi` (genel betik) duruyor, kullanılmıyor.
 - ESKİ KANAL KÖPRÜSÜ (kabuk 1.x taşınabilir exe, v1.13 ve öncesi): bunlar depo kökündeki `surum-ozet.json`/`surum.json`'u
   (raw, imzasız) okur ve yalnız arayüzü değiştirir. Her release'ten SONRA: `node araclar/eski-kanal.js` → surum.json +
   surum-ozet.json → commit + push (main). Eski kabukta yeni arayüz "Yeni kurulum gerekli" der ve kurulumu indirtir; yeni

@@ -42,7 +42,7 @@ module.exports = { build };
 
 if (require.main === module) (async () => {
   if (!process.argv.includes('--zorla')) {
-    const url = `https://github.com/departures-mil/baski-hesabi/releases/download/v${v}/BaskiHesabi-${v}-win-setup.exe`;
+    const url = `https://github.com/departures-mil/baski-hesabi/releases/download/v${v}/BaskiHesabi-Setup-${v}.exe`;
     const r = await fetch(url, { method: 'HEAD', redirect: 'manual' }).catch((e) => ({ status: 0, e }));
     if (!(r.status === 302 || r.status === 200)) { console.error('Kurulum yayında değil (' + r.status + '): ' + url + '\nÖnce release yayımlanmalı.'); process.exit(1); }
   }

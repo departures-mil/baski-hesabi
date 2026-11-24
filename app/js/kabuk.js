@@ -178,7 +178,7 @@
   }
 
   /* ---------- eski kabuk köprüsü ---------- */
-  function setupUrl() { return 'https://github.com/' + OWNER + '/' + REPO + '/releases/download/v' + V() + '/' + PREFIX + '-' + V() + '-win-setup.exe'; }
+  function setupUrl() { return 'https://github.com/' + OWNER + '/' + REPO + '/releases/download/v' + V() + '/' + PREFIX + '-Setup-' + V() + '.exe'; }
   function openOut(u) { try { window.open(u, '_blank'); } catch (e) { location.href = u; } }
   function bridge() {
     if (document.querySelector('.bh-bridge')) return;
