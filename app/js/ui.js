@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.14.0";   // araclar/surum.js yazar; package.json ile aynı olmalı
+window.APP_VERSION = "1.14.1";   // araclar/surum.js yazar; package.json ile aynı olmalı
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];

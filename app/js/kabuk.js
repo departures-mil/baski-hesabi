@@ -45,6 +45,11 @@
 
   /* ---------- sürüm notları ("neler yeni" + latest.json ile aynı: release-notes.json) ---------- */
   var NEWS = {
+    '1.14.1': {
+      tr: "- Güncellemeler artık tamamen kendiliğinden: yeni sürüm arka planda sessizce indirilir, program kapanınca pencere açmadan kurulur; bir sonraki açılışta yeni sürüm gelir. Hemen kurmak için Güncelle → «Şimdi kur ve yeniden aç». Kurulum gereken güncellemeler de sessiz yapılır. Kayıtlara dokunulmaz.",
+      en: "- Updates are now fully automatic: the new version downloads quietly in the background and installs without any window when the program closes; the next start opens the new version. To install right away: Update → «Install now and reopen». Updates that need the installer also run silently. Records are not touched.",
+      ar: "- أصبحت التحديثات تلقائية بالكامل: يُنزَّل الإصدار الجديد بهدوء في الخلفية ويُثبَّت دون أي نافذة عند إغلاق البرنامج، ويُفتح الإصدار الجديد في المرة التالية. للتثبيت فوراً: تحديث ← «ثبّت الآن وأعد الفتح». التحديثات التي تحتاج إلى برنامج التثبيت تتم بصمت أيضاً. لا تُمَسّ السجلات."
+    },
     '1.14.0': {
       tr: '- Yeni görünüm (Falcon) ve renk şemaları; eski görünüm "Klasik" olarak seçilebilir\n- Kurulumlu sürüm: her açılışta tam ekran, sağ üstte Küçült · Orta · Tam ekran · Kapat\n- Tek tuşla güncelleme: yalnızca değişen kısımlar iner (yüzde, MB, kalan, hız)\n- Önceki oturumlarda kaybolmuş görünen kayıtlar bulunup birleştirildi; hiçbir kayıt silinmez\n- Eşitlemede çakışma ve silinen kayıtlar yedeklenir (Ayarlar → Arşiv ve çakışma yedekleri)\n- Admin ile iletişim Ayarlar\'ın en sonunda; otomatik hata raporu; ilk açılış rehberi; yazı boyutu',
       en: '- New look (Falcon) and colour schemes; the previous look is available as "Classic"\n- Installed version: opens full screen, Minimize · Half · Full screen · Close at the top right\n- One-click updates: only the changed parts are downloaded (percent, MB, remaining, speed)\n- Records from earlier sessions that looked lost were found and merged; nothing is deleted\n- Sync keeps a backup of conflicting and deleted records (Settings → Archive and conflict backups)\n- Contact the admin at the end of Settings; automatic error reports; first-run guide; text size',

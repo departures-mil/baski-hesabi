@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
+	"time"
 )
 
 var sim = struct{ found, full, min bool }{}
@@ -40,3 +42,14 @@ func maximizeWindow()             { sim.min = false; sim.full = false }
 func halfWindow()                 { sim.min = false; sim.full = false }
 func closeWindow()                { sim.found = false }
 func bringToFront()               { sim.min = false }
+
+func hideWindow(cmd *exec.Cmd) {}
+func waitPid(pid int, d time.Duration) {
+	end := time.Now().Add(d)
+	for pid > 0 && time.Now().Before(end) {
+		if p, err := os.FindProcess(pid); err != nil || p.Signal(syscall.Signal(0)) != nil {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}

@@ -1,7 +1,7 @@
 {
   "name": "baski-hesabi",
   "productName": "Baskı Hesabı",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "private": true,
   "description": "3B baskı maliyet/kâr hesabı ve satış kayıtları (Windows, Go kabuk + düz JS arayüz)",
   "author": "departures-mil",

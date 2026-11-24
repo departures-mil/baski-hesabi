@@ -34,7 +34,7 @@ const appName = "Baski Hesabi"
 const appID = "baski-hesabi"
 
 // appVersion derlemede -ldflags "-X main.appVersion=X.Y.Z" ile verilir; araclar/surum.js burayı da yazar.
-var appVersion = "1.14.0"
+var appVersion = "1.14.1"
 
 // FixedPort: veriler bu kökene (http://127.0.0.1:41731) bağlıdır — DEĞİŞTİRMEYİN.
 const FixedPort = 41731
@@ -60,6 +60,9 @@ func env(k, d string) string {
 }
 
 func main() {
+	if helperMain(os.Args[1:]) { // güncelleme bekleyicisi (--kur): pencere yok
+		return
+	}
 	setDPIAware()
 	exe, err := os.Executable()
 	if err != nil {
@@ -113,6 +116,7 @@ func main() {
 		fmt.Println("adres:", addr)
 	}
 	waitForPage()
+	applyOnExit()
 }
 
 // otherInstance: portta Baskı Hesabı çalışıyorsa penceresini öne getirir.
@@ -290,6 +294,9 @@ func shellAPI(w http.ResponseWriter, r *http.Request) {
 
 	case p == "guncelle/tam":
 		installUpdate(w, r, false)
+
+	case p == "guncelle/uygula":
+		applyStaged(w)
 
 	case p == "ac":
 		var body struct{ URL string }
