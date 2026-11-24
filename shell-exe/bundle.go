@@ -211,6 +211,7 @@ type updateMeta struct {
 	TargetSize   int64  `json:"targetSize"`
 	File         string `json:"file"`
 	PatchSha256  string `json:"patchSha256"`
+	Deferred     bool   `json:"deferred"` // otomatik güncelleme: yalnız hazırla, program kapanınca / bir sonraki açılışta geçerli olsun
 }
 
 func shaHex(b []byte) string { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
@@ -243,6 +244,10 @@ func installUpdate(w http.ResponseWriter, r *http.Request, patch bool) {
 			fail(w, http.StatusInternalServerError, errCode(err))
 			return
 		}
+		if meta.Deferred {
+			fmt.Fprint(w, "staged")
+			return
+		}
 		fmt.Fprint(w, "restarting")
 		return
 	}
@@ -266,6 +271,10 @@ func installUpdate(w http.ResponseWriter, r *http.Request, patch bool) {
 	}
 	if err := stageBundle(out, meta); err != nil {
 		fail(w, http.StatusInternalServerError, errCode(err))
+		return
+	}
+	if meta.Deferred {
+		fmt.Fprint(w, "staged")
 		return
 	}
 	fmt.Fprint(w, "restarting")
@@ -304,10 +313,113 @@ func stageBundle(out []byte, meta updateMeta) error {
 	if chk, err := os.ReadFile(dst); err != nil || shaHex(chk) != shaHex(out) {
 		return errors.New("STAGE_VERIFY")
 	}
+	if meta.Deferred { // yeni paket diske yazıldı; bir sonraki açılışta (ya da Güncelle → uygula) etkin olur
+		stagedMu.Lock()
+		stagedBundle = nb
+		stagedMu.Unlock()
+		return nil
+	}
 	bundleMu.Lock()
 	active = nb
 	bundleMu.Unlock()
 	return nil
+}
+
+var (
+	stagedMu     sync.Mutex
+	stagedBundle *bundle // hazır (arka planda indirilmiş) arayüz paketi
+	pendingSetup string  // hazır kurulum exe'si: program kapanınca sessiz kurulur
+)
+
+// applyStaged: Güncelle → hazır güncellemeyi hemen uygular. Döner "restarting" (paket: sayfa yenilenir; kurulum: program kapanır).
+func applyStaged(w http.ResponseWriter) {
+	stagedMu.Lock()
+	nb, ps := stagedBundle, pendingSetup
+	stagedBundle, pendingSetup = nil, ""
+	stagedMu.Unlock()
+	switch {
+	case ps != "":
+		if err := startSetupHelper(ps, true); err != nil {
+			fail(w, http.StatusInternalServerError, "SETUP_START_FAILED")
+			return
+		}
+		go func() { time.Sleep(700 * time.Millisecond); closeWindow(); quitSoon() }()
+		fmt.Fprint(w, "setup")
+	case nb != nil:
+		bundleMu.Lock()
+		active = nb
+		bundleMu.Unlock()
+		fmt.Fprint(w, "restarting")
+	default:
+		fail(w, http.StatusConflict, "NOTHING_STAGED")
+	}
+}
+
+// applyOnExit: program kapanırken hazır kurulumu sessiz çalıştırır (program yeniden açılmaz).
+func applyOnExit() {
+	stagedMu.Lock()
+	ps := pendingSetup
+	pendingSetup = ""
+	stagedMu.Unlock()
+	if ps != "" {
+		_ = startSetupHelper(ps, false)
+	}
+}
+
+// startSetupHelper: kurulumu SESSİZ (/S) ve penceresiz çalıştırır. Kurulum program dosyasını değiştireceği için bekleyici,
+// programın geçici klasöre kopyalanmış hâlidir (--kur): program kapanınca kurulumu bekler, ac → bitince programı açar.
+func startSetupHelper(setup string, ac bool) error {
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	tmp := filepath.Join(filepath.Dir(setup), "bekleyici.exe")
+	if b, err := os.ReadFile(self); err == nil && os.WriteFile(tmp, b, 0o755) == nil {
+		self = tmp
+	}
+	args := []string{"--kur", setup, "--pid", strconv.Itoa(os.Getpid())}
+	if ac {
+		args = append(args, "--ac", filepath.Join(exeDir, filepath.Base(os.Args[0])))
+	}
+	return startDetached(exec.Command(self, args...))
+}
+
+// helperMain: "--kur" kipinde çalışır (pencere yok): bekle → kurulum /S → (isteğe bağlı) programı aç.
+func helperMain(args []string) bool {
+	var setup, ac string
+	pid := 0
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--kur":
+			if i+1 < len(args) {
+				setup = args[i+1]
+				i++
+			}
+		case "--pid":
+			if i+1 < len(args) {
+				pid, _ = strconv.Atoi(args[i+1])
+				i++
+			}
+		case "--ac":
+			if i+1 < len(args) {
+				ac = args[i+1]
+				i++
+			}
+		}
+	}
+	if setup == "" {
+		return false
+	}
+	waitPid(pid, 60*time.Second)
+	cmd := exec.Command(setup, "/S")
+	hideWindow(cmd)
+	_ = cmd.Run()
+	if ac != "" {
+		if _, err := os.Stat(ac); err == nil {
+			_ = startDetached(exec.Command(ac))
+		}
+	}
+	return true
 }
 
 // runSetup: win-setup kanalı — NSIS kurulumu doğrulanır, geçici klasöre yazılır, çalıştırılır, program kapanır.
@@ -333,7 +445,13 @@ func runSetup(buf []byte, meta updateMeta) error {
 	if chk, err := os.ReadFile(exe); err != nil || shaHex(chk) != shaHex(buf) {
 		return errors.New("STAGE_VERIFY")
 	}
-	if err := startDetached(exec.Command(exe)); err != nil {
+	if meta.Deferred {
+		stagedMu.Lock()
+		pendingSetup = exe
+		stagedMu.Unlock()
+		return nil
+	}
+	if err := startSetupHelper(exe, true); err != nil {
 		return errors.New("SETUP_START_FAILED")
 	}
 	go func() {

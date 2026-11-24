@@ -70,6 +70,7 @@ const hostJSTemplate = `/* Baskı Hesabı kabuğu (Go) → ortak çekirdek köpr
     return call(path, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Meta': encodeURIComponent(JSON.stringify(meta || {})) }, body: bytes })
       .then(function (t) {
         // Arayüz paketi değişti: sayfa yeniden yüklenir (kabuk yeni paketi sunar). Kurulumda kabuk kendini kapatır.
+        if (t.trim() === 'staged') return 'staged';   // otomatik güncelleme: hazırlandı, kapanınca / sonraki açılışta geçerli
         if (!/setup/i.test(String((meta && meta.channel) || '')) && !/\.exe$/i.test(String((meta && meta.file) || ''))) setTimeout(function () { location.reload(); }, 1200);
         return t.trim() || 'restarting';
       });
@@ -91,7 +92,9 @@ const hostJSTemplate = `/* Baskı Hesabı kabuğu (Go) → ortak çekirdek köpr
     update: {
       channel: 'win-app',
       applyPatch: function (bytes, meta) { return send('guncelle/yama', bytes, meta); },
-      installFull: function (bytes, meta) { return send('guncelle/tam', bytes, meta); }
+      installFull: function (bytes, meta) { return send('guncelle/tam', bytes, meta); },
+      deferred: true,
+      applyStaged: function () { return call('guncelle/uygula', { method: 'POST' }).then(function (t) { t = String(t || '').trim(); if (t !== 'setup') setTimeout(function () { location.reload(); }, 800); return 'restarting'; }); }
     },
     net: { download: download },
     agent: {

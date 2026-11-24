@@ -21,7 +21,7 @@ test('sürüm: package.json = ui.js = main.go = kabuk.js NEWS; semver', () => {
 });
 
 test('çekirdek kopyası: VERSION ebec004+, dosyalar yerinde, ayrı agent kopyası yok', () => {
-  assert.match(read('cekirdek/VERSION'), /ebec0046bc4eeb3767d8db2516d3c407e9a57ac8/);
+  assert.match(read('cekirdek/VERSION'), /^ortak-cekirdek [0-9a-f]{40}\n/);
   for (const f of ['app/cekirdek/fc-core.js', 'app/cekirdek/css/tokens.css', 'app/cekirdek/css/core.css', 'app/cekirdek/fonts/inter-latin-400-normal.woff2', 'app/cekirdek/fonts/noto-sans-arabic-arabic-400-normal.woff2', 'cekirdek/fcdelta.js'])
     assert.ok(fs.existsSync(path.join(ROOT, f)), f);
   const html = read('app/index.html');

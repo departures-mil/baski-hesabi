@@ -127,7 +127,7 @@ test('güncelleme uçları: FCD1 yama, bozuk yama, yanlış SHA, açılışta in
     assert.strictEqual(await r.text(), 'restarting');
     for (let i = 0; i < 40 && p.exitCode == null; i++) await sleep(100);
     assert.notStrictEqual(p.exitCode, null, 'kurulumdan sonra kabuk kapanmalı');
-    assert.match(p.out(), /kurulum \(calistirilmadi\):.*BaskiHesabi-99\.0\.1-win-setup\.exe/);
+    assert.match(p.out(), /kurulum \(calistirilmadi\):.*baski-hesabi-kurulum-\d+[\\/]bekleyici\.exe/);
   } finally { await stop(p); }
 });
 

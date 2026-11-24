@@ -315,3 +315,20 @@ func bringToFront() {
 	}
 	pSetForegroundWindow.Call(hwnd)
 }
+
+// hideWindow: kurulum programı gizli pencerede (SW_HIDE) çalışır.
+func hideWindow(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} }
+
+// waitPid: süreç bitene dek (en çok d) bekler.
+func waitPid(pid int, d time.Duration) {
+	if pid <= 0 {
+		return
+	}
+	k := syscall.NewLazyDLL("kernel32.dll")
+	h, _, _ := k.NewProc("OpenProcess").Call(0x00100000, 0, uintptr(pid)) // SYNCHRONIZE
+	if h == 0 {
+		return
+	}
+	k.NewProc("WaitForSingleObject").Call(h, uintptr(d/time.Millisecond))
+	k.NewProc("CloseHandle").Call(h)
+}
