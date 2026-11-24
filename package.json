@@ -1,0 +1,16 @@
+{
+  "name": "baski-hesabi",
+  "productName": "Baskı Hesabı",
+  "version": "1.14.0",
+  "private": true,
+  "description": "3B baskı maliyet/kâr hesabı ve satış kayıtları (Windows, Go kabuk + düz JS arayüz)",
+  "author": "departures-mil",
+  "license": "UNLICENSED",
+  "scripts": {
+    "paket": "node araclar/paket.js",
+    "surum": "node araclar/surum.js",
+    "eski-kanal": "node araclar/eski-kanal.js",
+    "ekran": "node araclar/ekran.js",
+    "test": "node --test --test-concurrency=1 test/app.test.js test/kabuk.test.js"
+  }
+}

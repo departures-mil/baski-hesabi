@@ -1,0 +1,4 @@
+ortak-cekirdek ebec0046bc4eeb3767d8db2516d3c407e9a57ac8
+https://github.com/departures-mil/ortak-cekirdek/tree/ebec0046bc4eeb3767d8db2516d3c407e9a57ac8
+Kopyalanan: web/dist/fc-core.js, web/css, web/fonts → app/cekirdek/ · delta/node/fcdelta.js + delta/FORMAT.md → cekirdek/ (test vektörleri)
+Yerel değişiklik yok. FCD1 uygulayıcısının Go sürümü: shell-exe/fcd1/ (çekirdekte Go yok).

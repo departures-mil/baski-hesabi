@@ -2,9 +2,9 @@
    silinenler iz bırakır ki eşitleme diğer cihazda da silebilsin. */
 
 const DB_NAME = "baski-hesabi";
-const DB_VER = 2;
+const DB_VER = 3;   // 3: cakismalar (çakışma ve arşiv yedekleri, v1.14.0)
 const STORES = ["meta", "filaments", "printers", "customers", "groups", "expenses",
-                "records", "spools", "files", "products", "sales"];
+                "records", "spools", "files", "products", "sales", "cakismalar"];
 
 let _db = null;
 
@@ -96,7 +96,6 @@ const SETTINGS_ID = "settings";
 const FACTORY = {
   id: SETTINGS_ID,
   lang: "tr",
-  fullscreen: true,
   rateTry: 48.92,
   rateSyp: 122,
   autoRates: true,
@@ -118,13 +117,8 @@ const FACTORY = {
   fb: null,              // {apiKey, projectId, ...}
   syncOn: false,
   lastSync: null,
-  /* güncelleme denetimi — yalnız program açılışında, kanal GitHub */
-  autoUpdate: true,
-  ghOwner: "departures-mil",
-  ghRepo: "baski-hesabi",
-  ghBranch: "main",
-  lastUpdateCheck: null,
-  skipVersion: null        // "Sonra" denen sürüm; yenisi çıkınca yine uyarır
+  /* güncelleme: ortak çekirdek (GitHub Releases + latest.json), açılışta ve 6 saatte bir denetlenir */
+  autoUpdate: true
 };
 
 async function getSettings() {

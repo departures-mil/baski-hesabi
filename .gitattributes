@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.woff2 binary
+*.ico binary
+*.png binary
+*.bin binary
+*.zip binary
+*.syso binary
+shell-exe/fcd1/testdata/** binary

@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.13";
+window.APP_VERSION = "1.14.0";   // araclar/surum.js yazar; package.json ile aynı olmalı
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -17,12 +17,8 @@ const S = {                 // oturum durumu
 
 /* ---------------- küçük yardımcılar ---------------- */
 function toast(msg, kind) {
-  const el = $("#toast");
-  el.textContent = msg;
-  el.className = "toast" + (kind ? " " + kind : "");
-  el.hidden = false;
-  clearTimeout(el._t);
-  el._t = setTimeout(() => { el.hidden = true; }, 3200);
+  /* ortak çekirdek bildirimi: good → başarı, bad → hata */
+  FC.ui.toast(msg, kind === "bad" ? "error" : kind === "good" ? "" : "info");
 }
 
 function modal(title, bodyHtml, buttons) {
@@ -1206,28 +1202,25 @@ function printQuote(r) {
 /* ======================================================================
    AYARLAR
    ====================================================================== */
+/* Ayarlar: ortak çekirdeğin kart ızgarası (FC.settings). Sıra: Görünüm (çekirdek: tema, şema, yazı boyutu, dil) ·
+   uygulama kartları (para/kurlar, öntanımlı değerler, Firebase eşitleme, yedek ve güncelleme, eski kayıtlar) ·
+   Asistan Agent · Kullanım Limitleri · Otomatik hata raporu · Hakkında · Admin ile iletişim (EN SON). */
 function screenSettings() {
+  return `<h1 data-i18n="settings_title"></h1><div id="setGrid" class="settings-grid"></div>`;
+}
+
+function settingsCards() {
   const st = S.settings;
   const fb = st.fb || {};
-  return `
-  <h1 data-i18n="settings_title"></h1>
-
-  <div class="grid2">
-    <section class="panel">
-      <h2 data-i18n="appearance"></h2>
-      <div class="field"><label data-i18n="language"></label>
-        <div class="inp"><select id="setLang">
-          ${["tr", "en", "ar"].map(c => `<option value="${c}"${st.lang === c ? " selected" : ""}>${I18N[c]._name}</option>`).join("")}
-        </select></div></div>
-      <label class="chk head"><input type="checkbox" id="setFull"${st.fullscreen ? " checked" : ""}>
-        <span data-i18n="fullscreen_start"></span></label>
-      <div class="field" style="margin-top:14px"><label data-i18n="def_currency"></label>
+  const card = (key, icon, titleKey, inner) =>
+    `<section class="card" data-bh-card="${key}"><h3 class="card-title">${FC.ui.icon(icon)}<span data-i18n="${titleKey}"></span></h3>${inner}</section>`;
+  const html =
+    card("money", "globe", "rates", `
+      <div class="field"><label data-i18n="def_currency"></label>
         <div class="inp"><select id="setCur">
           ${["USD", "TRY", "SYP"].map(c => `<option value="${c}"${st.primaryCurrency === c ? " selected" : ""}>${c}</option>`).join("")}
         </select></div></div>
-
-      <h2 style="margin-top:24px" data-i18n="rates"></h2>
-      <div class="pair">
+      <div class="pair" style="margin-top:11px">
         <div class="field"><label data-i18n="rate_try"></label>
           <div class="inp"><input id="setTry" type="number" min="0" step="0.01" value="${st.rateTry}"><span>₺</span></div></div>
         <div class="field"><label data-i18n="rate_syp"></label>
@@ -1240,11 +1233,8 @@ function screenSettings() {
         ? esc(t("rates_ok", { time: dateStr(st.ratesUpdatedAt), src: st.ratesSrc || "" })
             + " — " + t(st.ratesMarket ? "rate_market" : "rate_official"))
         : esc(t("rates_manual"))}</p>
-      <p class="note" data-i18n="syp_note"></p>
-    </section>
-
-    <section class="panel">
-      <h2 data-i18n="defaults"></h2>
+      <p class="note" data-i18n="syp_note"></p>`) +
+    card("defaults", "settings", "defaults", `
       <p class="lead" style="margin-bottom:12px" data-i18n="defaults_sub"></p>
       <div class="field"><label data-i18n="def_filament"></label>
         <div class="inp"><select id="dFil">${opts(S.filaments, st.defFilamentId, t("none"))}</select></div></div>
@@ -1265,19 +1255,16 @@ function screenSettings() {
       <div class="btnrow">
         <button class="btn pri" id="bSaveDefaults" data-i18n="save"></button>
         <button class="btn danger" id="bRestore" data-i18n="restore_defaults"></button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2 data-i18n="sync"></h2>
+      </div>`) +
+    card("sync", "cloud", "sync", `
       <p class="status" id="syncStatus">${fb.projectId ? esc(t("fb_ok", { id: fb.projectId })) : esc(t("fb_missing"))}</p>
       <div class="field" style="margin-top:12px"><label data-i18n="fb_config"></label>
         <div class="inp"><textarea id="fbJson" rows="5" placeholder='{"apiKey":"…","projectId":"…","authDomain":"…"}'>${fb.projectId ? esc(JSON.stringify(fb, null, 1)) : ""}</textarea></div>
         <p class="note" data-i18n="fb_config_hint"></p></div>
       <div class="pair" style="margin-top:11px">
-        <div class="field"><label>E-posta <span class="hint" data-i18n="optional"></span></label>
+        <div class="field"><label><span data-i18n="email"></span> <span class="hint" data-i18n="optional"></span></label>
           <div class="inp"><input id="fbEmail" type="email" value="${esc(st.fbEmail || "")}"></div></div>
-        <div class="field"><label>Parola <span class="hint" data-i18n="optional"></span></label>
+        <div class="field"><label><span data-i18n="password"></span> <span class="hint" data-i18n="optional"></span></label>
           <div class="inp"><input id="fbPass" type="password" value=""></div></div>
       </div>
       <div class="btnrow">
@@ -1285,69 +1272,44 @@ function screenSettings() {
         <button class="btn" id="bSyncNow" data-i18n="sync_now"></button>
       </div>
       <p class="status">${st.lastSync ? esc(t("sync_last", { time: new Date(st.lastSync).toLocaleString(I18N[LANG]._locale) })) : esc(t("sync_never"))}</p>
-    </section>
-
-    <section class="panel">
-      <h2 data-i18n="updates"></h2>
-      <div class="trow"><span data-i18n="current_version"></span><b>v${window.APP_VERSION}</b></div>
-
-      <label class="chk head"><input type="checkbox" id="setAutoUp"${st.autoUpdate ? " checked" : ""}>
-        <span data-i18n="update_on_open"></span></label>
-
-      <div class="field" style="margin-top:14px"><label data-i18n="up_channel"></label>
-        <div class="pair">
-          <div class="inp"><input id="setGhRepo" value="${esc((st.ghOwner || "") + "/" + (st.ghRepo || ""))}" placeholder="kullanici/depo"></div>
-          <div class="inp"><input id="setGhBranch" value="${esc(st.ghBranch || "main")}" data-i18n-ph="up_branch"></div>
-        </div>
-        <p class="note" data-i18n="up_channel_hint"></p>
-      </div>
-
-      <div class="btnrow">
-        <button class="btn" id="bCheckUp" data-i18n="check_update"></button>
-        <button class="btn pri" id="bDoUp" hidden data-i18n="update_now"></button>
-      </div>
-      <p class="status" id="upLastCheck"></p>
-      <p class="status" id="upStatus"></p>
-
-      <h2 style="margin-top:24px" data-i18n="backup"></h2>
-      <div class="btnrow">
+      <p class="note" data-i18n="sync_rule"></p>`) +
+    card("backup", "download", "backup", `
+      <div class="btnrow" style="margin-top:4px">
         <button class="btn" id="bExportAll" data-i18n="export_backup"></button>
         <button class="btn" id="bImportAll" data-i18n="import_backup"></button>
+        <button class="btn" id="bArchive" data-i18n="archive_title"></button>
         <input type="file" id="impFile" accept="application/json" hidden>
       </div>
-    </section>
-  </div>`;
+      <p class="note" data-i18n="backup_note"></p>
+      <label class="chk head"><input type="checkbox" id="setAutoUp"${st.autoUpdate !== false ? " checked" : ""}>
+        <span data-i18n="update_on_open"></span></label>
+      <p class="note" data-i18n="update_note"></p>
+      <div id="recoverBox"></div>`);
+  const box = document.createElement("div");
+  box.innerHTML = html;
+  applyI18n(box);
+  return [...box.children];
 }
 
 function bindSettings() {
-  $("#setLang").onchange = async e => {
-    await DB.saveSettings({ lang: e.target.value });
-    S.settings = await DB.getSettings();
-    setLang(e.target.value);
-    render();
-  };
-  $("#setFull").onchange = async e => {
-    await DB.saveSettings({ fullscreen: e.target.checked });
-    window.shell.setFullscreen(e.target.checked);
-    S.settings = await DB.getSettings();
-  };
+  const grid = $("#setGrid");
+  FC.settings.build(grid, Kabuk.settingsOptions(settingsCards()));
+  applyI18n(grid);
+
   $("#setCur").onchange = async e => {
     await DB.saveSettings({ primaryCurrency: e.target.value });
     S.settings = await DB.getSettings(); render();
   };
   $("#setAutoRates").onchange = e => DB.saveSettings({ autoRates: e.target.checked });
-
   $("#setAutoUp").onchange = async e => {
     await DB.saveSettings({ autoUpdate: e.target.checked });
     S.settings = await DB.getSettings();
   };
-  paintUpdateStatusLine();
 
   ["setTry", "setSyp"].forEach(id => $("#" + id).onchange = async () => {
     await DB.saveSettings({ rateTry: nz($("#setTry").value), rateSyp: nz($("#setSyp").value) });
     S.settings = await DB.getSettings();
   });
-
   $("#bRates").onclick = () => doFetchRates(true);
 
   $("#bSaveDefaults").onclick = async () => {
@@ -1367,7 +1329,7 @@ function bindSettings() {
   $("#bRestore").onclick = () => confirmBox(t("restore_confirm"), async () => {
     await DB.resetSettings();
     S.settings = await DB.getSettings();
-    setLang(S.settings.lang);
+    await appLangChanged(S.settings.lang || "tr");
     render(); toast(t("saved"), "good");
   });
 
@@ -1375,44 +1337,17 @@ function bindSettings() {
     let cfg = null;
     try {
       const raw = $("#fbJson").value.trim();
-      if (!raw) throw new Error("boş");
-      cfg = JSON.parse(raw.replace(/^[^{]*/, "").replace(/;?\s*$/, ""));
-    } catch (e) { toast(t("update_fail", { msg: String(e.message || e) }), "bad"); return; }
-    if (!cfg.apiKey || !cfg.projectId) { toast(t("required"), "bad"); return; }
-    const patch = { fb: cfg, syncOn: true };
-    const em = $("#fbEmail").value.trim(), pw = $("#fbPass").value;
-    if (em) patch.fbEmail = em;
-    if (em && pw) patch.fbPassword = pw;
-    await DB.saveSettings(patch);
-    S.settings = await DB.getSettings();
+      if (!raw) throw new Error(t("required"));
+      cfg = (FC.onboarding && FC.onboarding.parseFirebase && FC.onboarding.parseFirebase(raw)) ||
+        JSON.parse(raw.replace(/^[^{]*/, "").replace(/;?\s*$/, ""));
+    } catch (e) { toast(t("sync_error", { msg: String(e.message || e) }), "bad"); return; }
+    if (!cfg || !cfg.apiKey || !cfg.projectId) { toast(t("required"), "bad"); return; }
+    await saveFirebase(cfg, $("#fbEmail").value.trim(), $("#fbPass").value);
     $("#syncStatus").textContent = t("fb_ok", { id: cfg.projectId });
     toast(t("saved"), "good");
     doSync(true);
-    checkUpdates(false);
   };
-
   $("#bSyncNow").onclick = () => doSync(true);
-
-  const saveChannel = async () => {
-    const parts = $("#setGhRepo").value.trim().replace(/^https?:\/\/github\.com\//i, "").split("/");
-    await DB.saveSettings({
-      ghOwner: (parts[0] || "").trim(),
-      ghRepo: (parts[1] || "").trim(),
-      ghBranch: $("#setGhBranch").value.trim() || "main"
-    });
-    S.settings = await DB.getSettings();
-    toast(t("saved"), "good");
-  };
-  $("#setGhRepo").onchange = saveChannel;
-  $("#setGhBranch").onchange = saveChannel;
-
-  $("#bDoUp").hidden = !UP.found;
-  $("#bDoUp").onclick = () => applyFoundUpdate();
-  $("#bCheckUp").onclick = async () => {
-    const u = await checkUpdates(true);
-    $("#bDoUp").hidden = !(u && u.available);
-    paintUpdateStatusLine();
-  };
 
   $("#bExportAll").onclick = async () => {
     const bundle = await DB.exportAll();
@@ -1427,11 +1362,45 @@ function bindSettings() {
     confirmBox(t("import_confirm"), async () => {
       try {
         const n = await DB.importAll(JSON.parse(text));
-        await reload(); setLang(S.settings.lang); render();
+        await reload(); render();
         toast(t("import_done", { n }), "good");
-      } catch (err) { toast(t("update_fail", { msg: err.message }), "bad"); }
+      } catch (err) { toast(t("sync_error", { msg: err.message }), "bad"); }
     });
   };
+  $("#bArchive").onclick = () => archiveDialog();
+  Kabuk.recoverBox($("#recoverBox"));
+}
+
+async function saveFirebase(cfg, email, password) {
+  const patch = { fb: cfg, syncOn: true };
+  if (email) patch.fbEmail = email;
+  if (email && password) patch.fbPassword = password;
+  await DB.saveSettings(patch);
+  S.settings = await DB.getSettings();
+  if (FC.usage) FC.usage.setProject(cfg.projectId);
+}
+
+/* Arşiv ve çakışma yedekleri: eşitlemede ya da eski oturum kurtarmasında ezilen/silinen kayıtların tam kopyası.
+   "Geri yükle" yedeklenen hali yeni bir değişiklik olarak geri yazar (hiçbir şey silinmez). */
+async function archiveDialog() {
+  const list = (await DB.all("cakismalar", true)).sort((a, b) => String(b.zaman).localeCompare(String(a.zaman)));
+  const name = d => (d && (d.name || d.partName || d.customerName || d.title || d.note)) || (d && d.id) || "";
+  const rows = list.slice(0, 300).map(c => `<tr>
+      <td>${esc(dateStr(c.zaman))}</td><td>${esc(t(c.tur === "arsiv" ? "archive_kind_deleted" : "archive_kind_conflict"))}</td>
+      <td>${esc(t("nav_" + ({ filaments: "cats", printers: "printers", customers: "cats", groups: "cats", expenses: "cats", records: "records", spools: "stock", products: "products", sales: "sales", meta: "settings" }[c.store] || "settings")))}</td>
+      <td>${esc(name(c.kaybeden))}</td><td>${esc(c.kaynak || "")}</td>
+      <td class="act"><button class="btn" data-restore="${esc(c.id)}">${esc(t("archive_restore"))}</button></td></tr>`).join("");
+  modal(t("archive_title"), list.length
+    ? `<p class="note" style="margin-top:0">${esc(t("archive_sub"))}</p><div class="tablewrap"><table><thead><tr><th>${esc(t("date"))}</th><th></th><th></th><th></th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<p class="empty">${esc(t("archive_empty"))}</p>`,
+    [{ label: t("close"), onClick: closeModal }]);
+  $$("#modalBody [data-restore]").forEach(b => b.onclick = async () => {
+    const c = list.find(x => x.id === b.dataset.restore); if (!c || !c.kaybeden) return;
+    const doc = Object.assign({}, c.kaybeden);
+    delete doc.deleted; delete doc.archived;
+    await DB.put(c.store, doc);          // yeni updatedAt: eşitlemede de kazanır
+    await reload(); toast(t("archive_restored"), "good"); b.disabled = true;
+  });
 }
 
 async function doFetchRates(loud) {
@@ -1462,18 +1431,24 @@ async function doFetchRates(loud) {
 /* loud: kullanıcı düğmeye bastı. Açılıştaki kendiliğinden eşitleme sessizdir —
    bağlantı yoksa her açılışta uyarı atmasın. */
 async function doSync(loud) {
-  const dot = $("#syncDot");
   const st = $("#syncStatus");
-  dot.className = "dot-busy";
+  if (!S.settings.fb || !S.settings.fb.projectId) {
+    Kabuk.setSync("off");
+    if (loud) { S.screen = "settings"; render(); setTimeout(() => { const c = $("#fbJson"); if (c) { c.scrollIntoView({ block: "center" }); c.focus(); } }, 60); toast(t("fb_missing"), "bad"); }
+    return;
+  }
+  if (navigator.onLine === false) { Kabuk.setSync("offline"); if (loud) toast(t("sync_error", { msg: "offline" }), "bad"); return; }
+  Kabuk.setSync("syncing");
   if (st) { st.className = "status"; st.textContent = t("sync_working"); }
   try {
     const r = await SYNC.syncAll();
-    dot.className = "dot-on";
+    Kabuk.setSync("idle");
     await reload();
+    S.settings = await DB.getSettings();
     if (S.screen === "settings") render();
     if (loud) toast(t("sync_done", { n: r.total }), "good");
   } catch (e) {
-    dot.className = "dot-err";
+    Kabuk.setSync("error");
     if (st) { st.className = "status err"; st.textContent = t("sync_error", { msg: e.message }); }
     if (loud) toast(t("sync_error", { msg: e.message }), "bad");
   }
@@ -1775,140 +1750,6 @@ function bindSales() {
 }
 
 /* ======================================================================
-   GÜNCELLEME BİLDİRİMİ
-   Her program açılışında denetler; yeni sürüm varsa üstte bir şerit çıkar
-   ve sekmeye nokta koyar. Şerit, güncellenene ya da "Sonra" denene kadar
-   durur.
-   ====================================================================== */
-const UP = { found: null, busy: false };
-
-function upBarEls() {
-  return { bar: $("#upBar"), txt: $("#upBarTxt"), notes: $("#upBarNotes"),
-           go: $("#upBarGo"), later: $("#upBarLater") };
-}
-
-function showUpBar(u) {
-  const e = upBarEls();
-  if (!e.bar) return;
-  e.txt.textContent = t("update_banner", { v: u.version });
-  e.notes.textContent = u.notes || "";
-  e.notes.title = u.notes || "";
-  e.go.textContent = t("update_now");
-  e.later.textContent = t("update_later");
-  e.bar.hidden = false;
-  const bd = document.querySelector("#topUpd .top-badge"); if (bd) bd.hidden = false;
-  document.body.classList.add("has-upbar");
-  markTabDot(true);
-}
-
-function hideUpBar() {
-  const e = upBarEls();
-  if (e.bar) e.bar.hidden = true;
-  document.body.classList.remove("has-upbar");
-  markTabDot(false);
-}
-
-function markTabDot(on) {
-  const btn = $('#tabs button[data-screen="settings"]');
-  if (!btn) return;
-  const old = $(".tabdot", btn);
-  if (on && !old) {
-    const i = document.createElement("i");
-    i.className = "tabdot";
-    btn.appendChild(i);
-  } else if (!on && old) old.remove();
-}
-
-/* loud: kullanıcı düğmeye bastı — sonucu her hâlükârda bildir. */
-async function checkUpdates(loud) {
-  const st = await DB.getSettings();
-  const status = $("#upStatus");
-
-  if (!st.ghOwner || !st.ghRepo) {
-    if (loud && status) { status.className = "status err"; status.textContent = t("up_no_channel"); }
-    return null;
-  }
-  if (UP.busy) return null;
-  UP.busy = true;
-  if (loud && status) { status.className = "status"; status.textContent = t("update_checking"); }
-
-  try {
-    const u = await SYNC.checkUpdate();
-    await DB.saveSettings({ lastUpdateCheck: DB.now() });
-    S.settings = await DB.getSettings();
-
-    if (u.available) {
-      UP.found = u;
-      /* "Sonra" denen sürümü tekrar tekrar göstermeyiz; daha yenisi gelirse gösteririz */
-      if (S.settings.skipVersion && SYNC.cmpVer(u.version, S.settings.skipVersion) <= 0) {
-        if (loud) showUpBar(u);
-      } else {
-        showUpBar(u);
-        if (!loud) toast(t("update_banner", { v: u.version }), "good");
-      }
-      if (status) {
-        status.className = "status ok";
-        status.textContent = t("update_found", { v: u.version }) + (u.notes ? " — " + u.notes : "");
-      }
-    } else {
-      UP.found = null;
-      hideUpBar();
-      if (status) {
-        status.className = "status ok";
-        status.textContent = t("up_to_date");
-      }
-    }
-    if (S.screen === "settings") paintUpdateStatusLine();
-    return u;
-  } catch (e) {
-    if (status) { status.className = "status err"; status.textContent = t("update_fail", { msg: e.message }); }
-    if (loud) toast(t("update_fail", { msg: e.message }), "bad");
-    return null;
-  } finally {
-    UP.busy = false;
-  }
-}
-
-async function applyFoundUpdate() {
-  if (!UP.found) return;
-  const u = UP.found;
-  const status = $("#upStatus");
-  const e = upBarEls();
-  if (e.go) { e.go.disabled = true; e.go.textContent = t("update_applying"); }
-  if (status) { status.className = "status"; status.textContent = t("update_applying"); }
-  try {
-    if (!u.release) {
-      const goster = p => {
-        const yz = IndirmeIlerleme.yazi(p, LANG);
-        if (status) status.textContent = yz;
-        if (e.txt) e.txt.textContent = t("update_banner", { v: u.version }) + " — " + yz;
-      };
-      u.release = await SYNC.downloadRelease(u.size, goster);
-      if (status) status.textContent = t("update_applying");
-    }
-    await DB.saveSettings({ justUpdatedTo: u.version, skipVersion: null });
-    const done = await SYNC.applyUpdate(u.release);
-    if (status) status.textContent = t("update_done");
-    setTimeout(() => window.shell.restart(), 500);
-    if (!done) toast(t("update_done"), "good");
-  } catch (err) {
-    await DB.saveSettings({ justUpdatedTo: null });
-    if (e.go) { e.go.disabled = false; e.go.textContent = t("update_now"); }
-    if (status) { status.className = "status err"; status.textContent = t("update_fail", { msg: err.message }); }
-    toast(t("update_fail", { msg: err.message }), "bad");
-  }
-}
-
-function paintUpdateStatusLine() {
-  const el = $("#upLastCheck");
-  if (!el) return;
-  const st = S.settings;
-  el.textContent = st.lastUpdateCheck
-    ? t("update_last_check", { time: new Date(st.lastUpdateCheck).toLocaleTimeString(I18N[LANG]._locale) })
-    : t("update_never_checked");
-}
-
-/* ======================================================================
    YÖNLENDİRME
    ====================================================================== */
 const SCREENS = {
@@ -1940,8 +1781,6 @@ function render() {
   $("#main").innerHTML = sc.html();
   applyI18n($("#main"));
   $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.screen === S.screen));
-  if (UP.found && $("#upBar") && !$("#upBar").hidden) showUpBar(UP.found);
-  else markTabDot(false);
   try { sc.bind(); } catch (e) { console.error(e); }
   window.scrollTo(0, 0);
 }
@@ -1953,6 +1792,13 @@ async function boot() {
   if (window.shellReady) { try { await window.shellReady; } catch (e) {} }
   await DB.openDB();
   S.settings = await DB.getSettings();
+  setLang(S.settings.lang || "tr");
+
+  /* Kabuk 2: eski oturumların (rastgele port) kayıtlarını bu kökene topla — örnek kategoriler eklenmeden ÖNCE */
+  const hadSettings = !!(await DB.get("meta", "settings"));
+  const rec = await Kabuk.recover();
+  S.settings = await DB.getSettings();
+  const returning = hadSettings || (rec && rec.eklenen > 0) || !!(await DB.get("meta", "settings"));
 
   /* ilk açılışta örnek kategoriler: boş ekranla karşılaşmasın */
   if (!(await DB.all("filaments")).length && !(await DB.all("printers")).length) {
@@ -1969,64 +1815,35 @@ async function boot() {
   }
 
   await reload();
+  S.settings = await DB.getSettings();
   setLang(S.settings.lang || "tr");
   $("#verTag").textContent = "v" + window.APP_VERSION;
-  $("#langSel").value = S.settings.lang || "tr";
 
-  $("#langSel").onchange = async e => {
-    await DB.saveSettings({ lang: e.target.value });
-    S.settings = await DB.getSettings();
-    setLang(e.target.value);
-    render();
-  };
+  /* ortak çekirdek: dil, görünüm, üst çubuk, güncelleme, duyurular, iletişim, çökme raporu, Asistan Agent */
+  Kabuk.init({ returning, rec });
+
   $$("#tabs button").forEach(b => b.onclick = () => { S.screen = b.dataset.screen; render(); });
   $("#modalX").onclick = closeModal;
   $("#modalWrap").onclick = e => { if (e.target.id === "modalWrap") closeModal(); };
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
   render();
+  Kabuk.started();
 
-  /* sağ üst düğmeler */
-  const upBtn = $("#topUpd"), syBtn = $("#topSync");
-  const topTitles = () => { upBtn.title = t("top_update"); syBtn.title = t("top_sync");
-    upBtn.setAttribute("aria-label", upBtn.title); syBtn.setAttribute("aria-label", syBtn.title); };
-  topTitles();
-  $("#langSel").addEventListener("change", topTitles);
-  upBtn.onclick = async () => {
-    upBtn.classList.add("busy");
-    try {
-      const u = UP.found || await checkUpdates(true);
-      if (u && u.available) await applyFoundUpdate();
-      else if (u) toast(t("up_to_date"), "good");
-    } finally { upBtn.classList.remove("busy"); }
-  };
-  syBtn.onclick = async () => {
-    syBtn.classList.add("busy");
-    try { await doSync(true); } finally { syBtn.classList.remove("busy"); }
-  };
-
-  /* bildirim şeridinin düğmeleri */
-  $("#upBarGo").onclick = () => applyFoundUpdate();
-  $("#upBarLater").onclick = async () => {
-    if (UP.found) await DB.saveSettings({ skipVersion: UP.found.version });
-    S.settings = await DB.getSettings();
-    hideUpBar();
-  };
-
-  /* güncelleme sonrası ilk açılış: ne yüklendiğini söyle */
-  if (S.settings.justUpdatedTo) {
-    const v = S.settings.justUpdatedTo;
-    await DB.saveSettings({ justUpdatedTo: null });
-    S.settings = await DB.getSettings();
-    setTimeout(() => toast(t("update_applied", { v }), "good"), 600);
-  }
-
-  if (S.settings.fullscreen) window.shell.setFullscreen(true);
   if (S.settings.autoRates) doFetchRates(false);
-
-  /* güncelleme denetimi Firebase'den bağımsız; eşitleme ayrı */
-  if (S.settings.autoUpdate) checkUpdates(false);
   if (S.settings.fb && S.settings.fb.projectId) doSync().catch(() => {});
+  else Kabuk.setSync("off");
+}
+
+/* Dil değişimi (çekirdek dil düğmesi ya da Görünüm kartı) → uygulama */
+async function appLangChanged(code) {
+  if (!I18N[code]) return;
+  if (FC.i18n.lang() !== code) FC.i18n.set(code);     // çekirdek bileşenleri de aynı dilde
+  if (code === LANG) return;
+  setLang(code);
+  render();
+  await DB.saveSettings({ lang: code });
+  S.settings = await DB.getSettings();
 }
 
 document.addEventListener("DOMContentLoaded", boot);

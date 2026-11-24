@@ -1,5 +1,8 @@
 shell-exe/app/
+shell-exe/app.zip
 shell-exe/*.exe
+shell-exe/*.syso
 shell-exe/test-linux
 dist/
 node_modules/
+ekran/

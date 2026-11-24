@@ -1,6 +1,9 @@
-/* Firebase katmanı — resmî SDK yerine REST.
-   Aynı kod hem masaüstü kabuğunda hem Android WebView'de çalışır.
-   Eşitleme: updatedAt karşılaştırmalı, iki yönlü, son yazan kazanır. */
+/* Firebase katmanı — resmî SDK yerine REST (kullanıcının KENDİ Firebase projesi).
+   Eşitleme: updatedAt karşılaştırmalı, iki yönlü. Ortak kural: hiçbir kayıt silinmez ya da sessizce ezilmez —
+   uzaktaki daha yeni sürüm yereldekini değiştirirken yereldeki eski hal "cakismalar" deposuna yedeklenir;
+   uzakta silinmiş (deleted:true) kayıt yerelde de gizlenir ama tam içeriği "arsiv" olarak saklanır.
+   Kullanım sayacı (Kullanım Limitleri kartı): FC.usage.wrapFetch() Firestore REST çağrılarını sayar.
+   v1.14.0: eski (depo kökündeki imzasız sürüm dosyası) güncelleyicisi kaldırıldı (güncelleme ortak çekirdek: GitHub Releases + latest.json). */
 
 const FS_HOST = "https://firestore.googleapis.com/v1";
 const ID_HOST = "https://identitytoolkit.googleapis.com/v1";
@@ -159,6 +162,20 @@ async function fsGet(cfg, path) {
 }
 
 /* ---------- eşitleme ---------- */
+function sameDoc(a, b) {
+  const strip = d => { const o = Object.assign({}, d); delete o.updatedAt; return o; };
+  return window.Kurtarma ? Kurtarma.canon(strip(a)) === Kurtarma.canon(strip(b)) : JSON.stringify(strip(a)) === JSON.stringify(strip(b));
+}
+
+/* Ezilecek yerel kaydın tam kopyası: uzak silme → "arsiv", içerik farkı → "cakisma" */
+async function backupLocal(coll, local, remote) {
+  const at = DB.now();
+  await DB.put("cakismalar", {
+    id: DB.uid(), tur: remote.deleted && !local.deleted ? "arsiv" : "cakisma", kaynak: "firebase",
+    store: coll, kayitId: local.id, kalan: remote, kaybeden: local, zaman: at, updatedAt: at
+  }, true);
+}
+
 async function syncAll(onStep) {
   const st = await DB.getSettings();
   if (!st.fb || !st.fb.projectId) throw new Error(t("fb_missing"));
@@ -180,10 +197,11 @@ async function syncAll(onStep) {
         await fsPut(cfg, coll, d); pushed++;
       }
     }
-    /* uzakta daha yeni olanı aşağı al */
+    /* uzakta daha yeni olanı aşağı al — yereldeki eski hal yedeklenir */
     for (const r of remote) {
       const l = lmap.get(r.id);
       if (!l || String(r.updatedAt || "") > String(l.updatedAt || "")) {
+        if (l && !sameDoc(l, r)) await backupLocal(coll, l, r);
         await DB.put(coll, r, true); pulled++;
       }
     }
@@ -207,81 +225,4 @@ async function syncAll(onStep) {
   return { pushed, pulled, total: pushed + pulled };
 }
 
-/* ---------- tek tuşla güncelleme (GitHub) ----------
-   Depodaki surum.json:
-   { version:"1.2", notes:"…", files:{ "index.html":"…", "js/ui.js":"…" } }
-   Genel depo olduğu için anahtar gerekmez; Firebase bağlı olmasa da çalışır. */
-
-function ghRawUrl(st, path) {
-  const o = String(st.ghOwner || "").trim();
-  const r = String(st.ghRepo || "").trim();
-  const b = String(st.ghBranch || "main").trim() || "main";
-  if (!o || !r) return null;
-  return `https://raw.githubusercontent.com/${o}/${r}/${b}/${path}`;
-}
-
-async function checkUpdate() {
-  const st = await DB.getSettings();
-  const base = ghRawUrl(st, "surum.json");
-  if (!base) throw new Error(t("up_no_channel"));
-
-  /* önce küçük özet (yeni yayınlar); yoksa eski usul tam paket */
-  try {
-    const oz = await fetch(ghRawUrl(st, "surum-ozet.json") + "?t=" + Date.now(), { cache: "no-store" });
-    if (oz.ok) {
-      const o = await oz.json();
-      if (o && o.version) return {
-        available: cmpVer(o.version, window.APP_VERSION) > 0,
-        version: o.version, notes: o.notes || "", size: o.size || 0, release: null
-      };
-    }
-  } catch (e) { /* özet okunamadı: tam pakete düş */ }
-
-  /* ?t= ile CDN önbelleği atlanır, yeni sürüm hemen görünür */
-  const res = await fetch(base + "?t=" + Date.now(), { cache: "no-store" });
-  if (res.status === 404) return { available: false };          // kanal henüz boş
-  if (!res.ok) throw new Error("HTTP " + res.status);
-
-  let rel;
-  try { rel = await res.json(); }
-  catch (e) { throw new Error(t("up_bad_manifest")); }
-  if (!rel || !rel.version) return { available: false };
-
-  return {
-    available: cmpVer(rel.version, window.APP_VERSION) > 0,
-    version: rel.version,
-    notes: rel.notes || "",
-    release: rel
-  };
-}
-
-function cmpVer(a, b) {
-  const pa = String(a).replace(/^v/i, "").split(".").map(x => parseInt(x, 10) || 0);
-  const pb = String(b).replace(/^v/i, "").split(".").map(x => parseInt(x, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
-  }
-  return 0;
-}
-
-/* Paketi yüzde / MB / hız göstererek indirir. */
-async function downloadRelease(size, onProgress) {
-  const st = await DB.getSettings();
-  const buf = await IndirmeIlerleme.indir(ghRawUrl(st, "surum.json") + "?t=" + Date.now(),
-    { toplam: size || 0, ilerleme: onProgress });
-  return IndirmeIlerleme.json(buf);
-}
-
-async function applyUpdate(release) {
-  if (!release || !release.files) throw new Error("paket boş");
-  if (window.shell && window.shell.applyUpdate) {
-    await window.shell.applyUpdate(JSON.stringify({ version: release.version, files: release.files }));
-    return true;                      // kabuk yazar ve yeniden başlatır
-  }
-  /* kabuk yoksa (tarayıcı) paketi saklarız, açılışta yüklenir */
-  await DB.put("meta", { id: "pendingUpdate", version: release.version, files: release.files }, true);
-  return false;
-}
-
-window.SYNC = { syncAll, checkUpdate, applyUpdate, downloadRelease, signIn, signInAnon, ensureAuth,
-                fsGet, fsPut, fsList, cmpVer, ghRawUrl };
+window.SYNC = { syncAll, signIn, signInAnon, ensureAuth, fsGet, fsPut, fsList, sameDoc };
