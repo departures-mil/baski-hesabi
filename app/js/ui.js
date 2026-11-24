@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.12";
+window.APP_VERSION = "1.13";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
