@@ -69,7 +69,7 @@ const shots = [
       await ctx.route(/^https:/, (r) => r.abort());
       if (s.legacy) {   // kabuk 1.x: host.js yok, /__shell/info eski biçimde
         await ctx.route(/\/__shell\/host\.js/, (r) => r.fulfill({ status: 404, body: 'yok' }));
-        await ctx.route(/\/__shell\/info/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ kind: 'desktop', version: '1.5', dataDir: 'C:\\Users\\kullanici\\Downloads\\BaskiHesabi-veri', outDir: 'C:\\Users\\kullanici\\Downloads\\BaskiHesabi-ciktilar' }) }));
+        await ctx.route(/\/__shell\/info/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ kind: 'desktop', version: '1.5', dataDir: 'C:\\Users\\Kullanici\\Downloads\\BaskiHesabi-veri', outDir: 'C:\\Users\\Kullanici\\Downloads\\BaskiHesabi-ciktilar' }) }));
       }
       const page = await ctx.newPage();
       page.on('pageerror', (e) => errors.push(s.name + ': ' + e.message));
