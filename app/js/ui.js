@@ -1,6 +1,6 @@
 /* Baskı Hesabı — ekranlar ve akış. */
 
-window.APP_VERSION = "1.14.1";   // araclar/surum.js yazar; package.json ile aynı olmalı
+window.APP_VERSION = "1.15.0";   // araclar/surum.js yazar; package.json ile aynı olmalı
 
 const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
@@ -62,7 +62,7 @@ function dateStr(iso) {
 function opts(list, sel, placeholder) {
   let h = `<option value="">${esc(placeholder || "—")}</option>`;
   list.forEach(x => {
-    h += `<option value="${esc(x.id)}"${x.id === sel ? " selected" : ""}>${esc(x.name)}</option>`;
+    h += `<option value="${esc(x.id)}"${x.id === sel ? " selected" : ""}>${esc(String(x.name || "").replace(/\s*\n+\s*/g, " · "))}</option>`;
   });
   return h;
 }
@@ -1536,11 +1536,13 @@ function bindProducts() {
   $$("img[data-thumb]").forEach(img => loadThumb(img));
 }
 
+function mlFit(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }
+
 function productForm(item) {
   const x = item || {};
   modal(item ? t("edit_product") : t("add_product"), `
     <div class="field"><label data-i18n="product_name"></label>
-      <div class="inp"><input id="u_name" value="${esc(x.name || "")}"></div></div>
+      <div class="inp"><textarea id="u_name" class="ml-name" rows="1" title="${esc(t("multiline_hint"))}">${esc(x.name || "")}</textarea></div></div>
     <div class="pair" style="margin-top:11px">
       <div class="field"><label data-i18n="in_stock"></label>
         <div class="inp"><input id="u_qty" type="number" min="0" step="1" value="${esc(x.qty ?? 0)}"><span data-i18n="pieces"></span></div></div>
@@ -1561,7 +1563,7 @@ function productForm(item) {
     { label: t("cancel"), onClick: closeModal },
     { label: t("save"), kind: "pri", onClick: async () => {
         const doc = Object.assign({}, x, {
-          name: $("#u_name").value.trim(),
+          name: $("#u_name").value.replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(),
           qty: Math.max(0, Math.round(nz($("#u_qty").value))),
           unitCost: nz($("#u_cost").value),
           margin: nz($("#u_margin").value),
@@ -1720,7 +1722,7 @@ function screenSales() {
     </tr></thead>
     <tbody>${list.map(s => `<tr>
       <td>${esc(dateStr(s.date))}</td>
-      <td>${esc(s.productName || "—")}</td>
+      <td class="ml-text">${esc(s.productName || "—")}</td>
       <td>${esc(s.customerName || "—")}</td>
       <td class="num">${nz(s.qty)}</td>
       <td class="num">${esc(money(nz(s.unitPrice)))}</td>
@@ -1826,6 +1828,16 @@ async function boot() {
   $("#modalX").onclick = closeModal;
   $("#modalWrap").onclick = e => { if (e.target.id === "modalWrap") closeModal(); };
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+  // v1.15: çok satırlı ürün adı — Shift+Enter yeni satır, Enter sonraki alan, kutu yazıya göre büyür
+  document.addEventListener("input", e => { if (e.target.matches && e.target.matches("textarea.ml-name")) mlFit(e.target); });
+  document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches("textarea.ml-name")) mlFit(e.target); });
+  document.addEventListener("keydown", e => {
+    const el = e.target;
+    if (!el.matches || !el.matches("textarea.ml-name") || e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    const all = [...(el.closest("#modalBody") || document.body).querySelectorAll("input:not([type=file]):not([type=hidden]), select, textarea")];
+    const nx = all[all.indexOf(el) + 1]; if (nx) { nx.focus(); try { nx.select(); } catch (_) {} }
+  }, true);
 
   render();
   Kabuk.started();

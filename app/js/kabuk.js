@@ -45,6 +45,11 @@
 
   /* ---------- sürüm notları ("neler yeni" + latest.json ile aynı: release-notes.json) ---------- */
   var NEWS = {
+    '1.15.0': {
+      tr: "- Ürün adı artık çok satırlı yazılabiliyor: Shift+Enter yeni satır açar, Enter bir sonraki alana geçer, kutu yazıya göre kendiliğinden büyür.\n- Satırlar ürün kartında ve satış kayıtlarında korunuyor; açılır listelerde satırlar « · » ile tek satırda görünüyor.",
+      en: "- Product names can now span several lines: Shift+Enter starts a new line, Enter moves to the next field, and the box grows with the text.\n- Line breaks are kept on the product card and in sales records; in drop-down lists the lines appear on one line separated by « · ».",
+      ar: "- يمكن الآن كتابة اسم المنتج على عدة أسطر: Shift+Enter يبدأ سطراً جديداً، وEnter ينتقل إلى الحقل التالي، ويتمدد المربع تلقائياً مع النص.\n- تُحفظ الأسطر في بطاقة المنتج وفي سجلات المبيعات؛ وفي القوائم المنسدلة تظهر الأسطر في سطر واحد مفصولة بـ « · »."
+    },
     '1.14.1': {
       tr: "- Güncellemeler artık tamamen kendiliğinden: yeni sürüm arka planda sessizce indirilir, program kapanınca pencere açmadan kurulur; bir sonraki açılışta yeni sürüm gelir. Hemen kurmak için Güncelle → «Şimdi kur ve yeniden aç». Kurulum gereken güncellemeler de sessiz yapılır. Kayıtlara dokunulmaz.",
       en: "- Updates are now fully automatic: the new version downloads quietly in the background and installs without any window when the program closes; the next start opens the new version. To install right away: Update → «Install now and reopen». Updates that need the installer also run silently. Records are not touched.",

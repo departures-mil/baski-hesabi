@@ -301,7 +301,7 @@ td.act{text-align:end;white-space:nowrap;width:1%}
 .prodimg.ph::after{content:"";position:absolute;inset:14px 12px;border-radius:3px;
   background:linear-gradient(90deg,var(--filament),var(--power));opacity:.3}
 .prodttl{min-width:0;flex:1}
-.prodttl h3{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prodttl h3{margin:0;overflow-wrap:anywhere;white-space:pre-line}
 .prodttl .cardsub{margin:2px 0 0}
 
 /* ---------- ortak çekirdek ile uyum ---------- */
@@ -312,3 +312,7 @@ td.act{text-align:end;white-space:nowrap;width:1%}
 .bh-bridge .notice{margin-top:12px}
 pre.notes{white-space:pre-wrap;font:inherit;margin:8px 0 0;color:var(--muted)}
 #recoverBox code{font-size:calc(12px * var(--font-scale,1));word-break:break-all}
+
+/* v1.15: çok satırlı ürün adı */
+.inp textarea.ml-name{resize:none;overflow:hidden;min-height:0;line-height:1.4;padding:9px 0;white-space:pre-wrap}
+.ml-text{white-space:pre-line;overflow-wrap:anywhere}

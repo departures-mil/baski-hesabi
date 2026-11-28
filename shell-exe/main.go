@@ -34,7 +34,7 @@ const appName = "Baski Hesabi"
 const appID = "baski-hesabi"
 
 // appVersion derlemede -ldflags "-X main.appVersion=X.Y.Z" ile verilir; araclar/surum.js burayı da yazar.
-var appVersion = "1.14.1"
+var appVersion = "1.15.0"
 
 // FixedPort: veriler bu kökene (http://127.0.0.1:41731) bağlıdır — DEĞİŞTİRMEYİN.
 const FixedPort = 41731
